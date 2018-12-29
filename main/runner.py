@@ -8,7 +8,7 @@ import django
 
 django.setup()
 
-from main.main import *
+from main.worker import *
 
 group = Group.objects.get(id=1)
 bot = Bot.objects.all()[0]
