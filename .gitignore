@@ -2,3 +2,6 @@
 **.json
 main/data
 media
+settings.py
+logs.txt
+*.pyc

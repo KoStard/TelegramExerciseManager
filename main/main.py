@@ -1,13 +1,9 @@
-import requests
-import json
 from main.models import *
+from main.universals import get_request
 from time import sleep
-
-
-def get_request(url, payload=None):
-    resp = requests.get(url, params=payload)
-    if resp.status_code == 200:
-        return json.loads(resp.content.decode('utf-8'), encoding='utf-8')['result']
+from datetime import datetime
+import logging
+logging.basicConfig(filename='logs.txt', level=logging.DEBUG)
 
 
 def participant_answering(participant, group, problem, variant):
@@ -19,7 +15,8 @@ def participant_answering(participant, group, problem, variant):
     else:
         print("Wrong answer from {}".format(participant))
     try:
-        group_specific_participant_data = participant.groupspecificparticipantdata_set.get(group=group)
+        group_specific_participant_data = participant.groupspecificparticipantdata_set.get(
+            group=group)
     except GroupSpecificParticipantData.DoesNotExist:
         group_specific_participant_data = GroupSpecificParticipantData(**{
             'participant': participant,
@@ -40,18 +37,21 @@ def participant_answering(participant, group, problem, variant):
 
 def update_bot(bot):
     """ Will get bot updates """
-    url = bot.base_url + 'getUpdates?' + ('offset={}'.format(bot.offset) if bot.offset else '')
+    url = bot.base_url + 'getUpdates?' + \
+        ('offset={}'.format(bot.offset) if bot.offset else '')
     resp = get_request(url)
     for update in resp:
         message = update.get('message')
         if message and not message['from']['is_bot']:
             print('{} [{}] -> {}'.format(message['from'].get('first_name') or message['from'].get('username') or
-                                         message['from'].get('last_name'), bot, message.get('text') or message))
+                                         message['from'].get('last_name'), bot, message.get('text') or "|UNKNOWN|"))
+            logging.info('{}::{} [{}] -> {}'.format(datetime.now(), message['from'].get('first_name') or message['from'].get('username') or
+                                                    message['from'].get('last_name'), bot, message.get('text') or message))
             try:
                 group = Group.objects.get(telegram_id=message['chat']['id'])
             except Group.DoesNotExist:
-                # bot.send_message(group,
-                #                  'Hi, if you want to use this bot in your groups too, then contact with @KoStard')
+                bot.send_message(message['chat']['id'],
+                                 'Hi, if you want to use this bot in your groups too, then contact with @KoStard')
                 continue
 
             if message.get('new_chat_members'):
@@ -81,7 +81,8 @@ def update_bot(bot):
                 if len(text) == 1 and (
                         ord(text) in range(ord('a'), ord('e') + 1) or ord(text) in range(ord('A'), ord('E') + 1)):
                     if group.activeProblem and BotBinding.objects.filter(bot=bot, group=group):
-                        participant_answering(participant, group, group.activeProblem, text)
+                        participant_answering(
+                            participant, group, group.activeProblem, text)
                 elif text[0] == '/':
                     command = text[1:].split(' ')[0]
                     if command in available_commands:
@@ -92,7 +93,8 @@ def update_bot(bot):
                                 sorted(participant_group_bindings, key=lambda binding: binding.role.priority_level)[
                                     -1].role
                         else:
-                            max_priority_role = Role.objects.get(value='participant')
+                            max_priority_role = Role.objects.get(
+                                value='participant')
                         if max_priority_role.priority_level >= available_commands[command][1]:
                             if available_commands[command][2]:
                                 if not BotBinding.objects.filter(bot=bot, group=group):
@@ -100,26 +102,33 @@ def update_bot(bot):
                                                      'Hi, if you want to use this bot in '
                                                      'your groups too, then contact with @KoStard')
                                     return
-                            available_commands[command][0](bot, group, text, message)
+                            available_commands[command][0](
+                                bot, group, text, message)
                         else:
                             bot.send_message(group,
                                              "Sorry dear {}, your role \"{}\" is not granted to use this command.".format(
                                                  participant, max_priority_role.name))
                     else:
-                        bot.send_message(group, 'Invalid command "{}"'.format(command))
+                        bot.send_message(
+                            group, 'Invalid command "{}"'.format(command))
             participant.save()
         bot.offset = update['update_id'] + 1
         bot.save()
 
 
-def send_problem(bot, group, text, message):
+def send_problem(bot: Bot, group: Group, text, message):
     index = int(text.split()[1])
     try:
         problem = group.activeSubject.problem_set.get(index=index)
     except Problem.DoesNotExist:
         bot.send_message(group, 'Invalid problem number "{}".')
     else:
-        bot.send_message(group, str(problem))
+        form_resp = bot.send_message(group, str(problem))
+        logging.info("Sending problem ${}".format(problem.index))
+        if problem.img and form_resp:
+            bot.send_image(group, open('media/'+problem.img.name,
+                                       'rb'), reply_to_message_id=form_resp[0].get('message_id'), caption='Image of problem N{}.'.format(problem.index))
+            logging.info("Sending image for problem ${}".format(problem.index))
         group.activeSubject = problem.subject
         group.activeProblem = problem
         group.save()
@@ -133,7 +142,8 @@ def answer_problem(bot, group, text, message):
     if len(text.split()) > 1:
         index = int(text.split()[1])
         if problem and index > problem.index:
-            bot.send_message(group, "You can't send new problem's answer without opening it.")
+            bot.send_message(
+                group, "You can't send new problem's answer without opening it.")
             return
         elif not problem or index < problem.index:
             try:
@@ -143,7 +153,6 @@ def answer_problem(bot, group, text, message):
             else:
                 bot.send_message(group, problem.get_answer())
             return
-    print("Here", problem, problem.get_answer())
     bot.send_message(group, problem.get_answer())
     bot.send_message(group, problem.close(group))
     group.activeProblem = None
@@ -153,7 +162,8 @@ def answer_problem(bot, group, text, message):
 def start_in_group(bot, group, text, message):
     binding = BotBinding(bot=bot, group=group)
     binding.save()
-    bot.send_message(group, "This group is now bound with me, to break the connection, use /stop command.")
+    bot.send_message(
+        group, "This group is now bound with me, to break the connection, use /stop command.")
 
 
 def remove_from_group(bot, group, text, message):
@@ -177,10 +187,12 @@ def get_score(bot, group, text, message):
     participant = Participant.objects.filter(pk=message['from']['id'])
     if participant:
         participant = participant[0]
-        specific = GroupSpecificParticipantData.objects.filter(participant=participant, group=group)
+        specific = GroupSpecificParticipantData.objects.filter(
+            participant=participant, group=group)
         if specific:
             specific = specific[0]
-            bot.send_message(group, "{}'s score is {}".format(str(participant), specific.score))
+            bot.send_message(group, "{}'s score is {}".format(
+                str(participant), specific.score))
 
 
 # (function, min_priority_level, needs_binding)

@@ -1,15 +1,11 @@
 from django.db import models
+from main.universals import get_request
+import io
 import re
-import requests
-import json
+import logging
+logging.basicConfig(filename='logs.txt', level=logging.DEBUG)
 
 MESSAGE_MAX_LENGTH = 4096
-
-
-def get_request(url, payload=None):
-    resp = requests.get(url, params=payload)
-    if resp.status_code == 200:
-        return json.loads(resp.content.decode('utf-8'), encoding='utf-8')['result']
 
 
 class Discipline(models.Model):
@@ -60,13 +56,13 @@ class Problem(models.Model):
     def __str__(self):
         return """\\<b>#Problem N{}\\</b>{}\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}""".format(self.index, (
             "\nFrom chapter: #{}".format(self.chapter) if self.chapter else ''), self.formulation,
-                                                                                      self.variant_a, self.variant_b,
-                                                                                      self.variant_c, self.variant_d,
-                                                                                      self.variant_e)
+            self.variant_a, self.variant_b,
+            self.variant_c, self.variant_d,
+            self.variant_e)
 
     def get_answer(self):
         return """\\<b>The right choice is {}\\</b>\n{}\n#Answer to {}\n""".format(self.right_variant, self.answer_formulation,
-                                                                        self.index)
+                                                                                   self.index)
 
     def close(self, group):
         answers = Answer.objects.filter(problem=self, group_specific_participant_data__group=group,
@@ -83,9 +79,9 @@ class Problem(models.Model):
             index = 1
             for answer in answers:
                 current = "{}: {} - {}{}".format(index, answer.group_specific_participant_data.participant,
-                                                   answer.group_specific_participant_data.score,
-                                                   (' [{}%]'.format(answer.group_specific_participant_data.percentage)
-                                                    if answer.group_specific_participant_data.percentage else ''))
+                                                 answer.group_specific_participant_data.score,
+                                                 (' [{}%]'.format(answer.group_specific_participant_data.percentage)
+                                                  if answer.group_specific_participant_data.percentage else ''))
                 if index <= 3:
                     current = '\\<b>{}\\</b>'.format(current)
                 index += 1
@@ -123,8 +119,10 @@ class Group(models.Model):
     username = models.CharField(max_length=100, blank=True, null=True)
     title = models.CharField(max_length=150)
     type = models.ForeignKey(GroupType, on_delete=models.CASCADE)
-    activeProblem = models.ForeignKey(Problem, on_delete=models.CASCADE, blank=True, null=True)
-    activeSubject = models.ForeignKey(Subject, on_delete=models.CASCADE, blank=True, null=True)
+    activeProblem = models.ForeignKey(
+        Problem, on_delete=models.CASCADE, blank=True, null=True)
+    activeSubject = models.ForeignKey(
+        Subject, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return '[{}] {}'.format(self.type.name, self.title or self.username)
@@ -167,31 +165,52 @@ class Bot(User):
             self.last_name = resp.get('last_name')
             self.save()
 
-    def send_message(self, group: 'text/id or group', text, parse_mode='HTML'):
+    def send_message(self, group: 'text/id or group', text, *, parse_mode='HTML', reply_to_message_id=None):
         if not (isinstance(group, str) or isinstance(group, int)):
             group = group.telegram_id
 
         if parse_mode == 'Markdown':
             text = text.replace('_', '\_')
-        res = []
+        blocks = []
         if len(text) > MESSAGE_MAX_LENGTH:
             current = text
             while len(current) > MESSAGE_MAX_LENGTH:
                 f = current.rfind('. ', 0, MESSAGE_MAX_LENGTH)
-                res.append(current[:f+1])
+                blocks.append(current[:f+1])
                 current = current[f+2:]
-            res.append(current)
+            blocks.append(current)
         else:
-            res.append(text)
-        for message in res:
+            blocks.append(text)
+        resp = []
+        for message in blocks:
             url = self.base_url + 'sendMessage'
             payload = {
                 'chat_id': group,
                 'text': message.replace('<', '&lt;').replace('\\&lt;', '<'),
+                'reply_to_message_id': reply_to_message_id if not resp else resp[-1].get('message_id')
             }
             if parse_mode:
                 payload['parse_mode'] = parse_mode
-            get_request(url, payload)
+            resp_c = get_request(url, payload=payload)
+            logging.info(resp_c)
+            resp.append(resp_c)
+        return resp
+
+    def send_image(self, group: 'text/id or group', image_file: io.BufferedReader, *, caption='', reply_to_message_id=None):
+        if not (isinstance(group, str) or isinstance(group, int)):
+            group = group.telegram_id
+        url = self.base_url + 'sendPhoto'
+        payload = {
+            'chat_id': group,
+            'caption': caption,
+            'reply_to_message_id': reply_to_message_id,
+        }
+        files = {
+            'photo': image_file
+        }
+        resp = get_request(url, payload=payload, files=files)
+        logging.info(resp)
+        return resp
 
     def __str__(self):
         return '[BOT] {}'.format(self.first_name or self.username or self.last_name)
@@ -278,7 +297,8 @@ class Answer(models.Model):
     answer = models.CharField(max_length=1, null=True, blank=True)
     right = models.BooleanField(default=False)
     processed = models.BooleanField(default=False)
-    group_specific_participant_data = models.ForeignKey(GroupSpecificParticipantData, on_delete=models.CASCADE)
+    group_specific_participant_data = models.ForeignKey(
+        GroupSpecificParticipantData, on_delete=models.CASCADE)
 
     def process(self):
         if self.right and not self.processed:
