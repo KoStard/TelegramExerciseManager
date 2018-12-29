@@ -12,11 +12,6 @@ import logging
 def participant_answering(participant, group, problem, variant):
     is_right = False
     variant = variant.lower()
-    if variant == problem.right_variant.lower():
-        print("Right answer from {}".format(participant))
-        is_right = True
-    else:
-        print("Wrong answer from {}".format(participant))
     try:
         group_specific_participant_data = participant.groupspecificparticipantdata_set.get(
             group=group)
@@ -27,7 +22,16 @@ def participant_answering(participant, group, problem, variant):
             'score': 0,
         })
         group_specific_participant_data.save()
-    if not problem.answer_set.filter(group_specific_participant_data=group_specific_participant_data):
+    right_answers_count = len(problem.answer_set.filter(
+        right=True, processed=False, group_specific_participant_data__group=group))  # Getting right answers only from current group
+    if variant == problem.right_variant.lower():
+        print("Right answer from {} N{}".format(
+            participant, right_answers_count))
+        is_right = True
+    else:
+        print("Wrong answer from {} - Right answers {}".format(participant,
+                                                               right_answers_count))
+    if not problem.answer_set.filter(group_specific_participant_data=group_specific_participant_data, processed=False):
         answer = Answer(**{
             'problem': problem,
             'answer': variant,
