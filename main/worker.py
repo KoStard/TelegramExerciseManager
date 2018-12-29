@@ -6,7 +6,7 @@ from main.universals import (
 from time import sleep
 from datetime import datetime
 import logging
-configure_logging()
+# configure_logging()
 
 
 def participant_answering(participant, group, problem, variant):
@@ -48,7 +48,7 @@ def update_bot(bot):
         if message and not message['from']['is_bot']:
             print('{} [{}] -> {}'.format(message['from'].get('first_name') or message['from'].get('username') or
                                          message['from'].get('last_name'), bot, message.get('text') or "|UNKNOWN|"))
-            logging.info('{}::{} [{}] -> {}'.format(datetime.now(), message['from'].get('first_name') or message['from'].get('username') or
+            logging.info('{}| {} [{}] -> {}'.format(datetime.now(), message['from'].get('first_name') or message['from'].get('username') or
                                                     message['from'].get('last_name'), bot, message.get('text') or message))
             try:
                 group = Group.objects.get(telegram_id=message['chat']['id'])
@@ -127,11 +127,11 @@ def send_problem(bot: Bot, group: Group, text, message):
         bot.send_message(group, 'Invalid problem number "{}".')
     else:
         form_resp = bot.send_message(group, str(problem))
-        logging.info("Sending problem ${}".format(problem.index))
+        logging.info("Sending problem {}".format(problem.index))
         if problem.img and form_resp:
             bot.send_image(group, open('media/'+problem.img.name,
                                        'rb'), reply_to_message_id=form_resp[0].get('message_id'), caption='Image of problem N{}.'.format(problem.index))
-            logging.info("Sending image for problem ${}".format(problem.index))
+            logging.info("Sending image for problem {}".format(problem.index))
         group.activeSubject = problem.subject
         group.activeProblem = problem
         group.save()

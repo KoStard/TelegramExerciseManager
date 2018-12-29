@@ -19,6 +19,6 @@ def configure_logging():
     """ Preventing multiple calls """
     if root_logger.handlers and root_logger.handlers[0].stream.name == 'logs.txt' and root_logger.handlers[0].stream.encoding == 'utf-8':
         return
-    root_logger.setLevel(logging.DEBUG)
+    root_logger.setLevel(logging.INFO)
     handler = logging.FileHandler('logs.txt', 'a', 'utf-8')
     root_logger.addHandler(handler)
