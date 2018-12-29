@@ -42,11 +42,13 @@ def participant_answering(participant, group, problem, variant):
         answer.save()
 
 
-def update_bot(bot):
+def update_bot(bot: Bot):
     """ Will get bot updates """
     url = bot.base_url + 'getUpdates?' + \
         ('offset={}'.format(bot.offset) if bot.offset else '')
     resp = get_request(url)
+    bot.last_updated = datetime.now()
+    bot.save()
     for update in resp:
         message = update.get('message')
         if message and not message['from']['is_bot']:

@@ -154,6 +154,7 @@ class Bot(User):
     """ Bot model """
     token = models.CharField(max_length=50)
     offset = models.IntegerField(default=0)
+    last_updated = models.DateTimeField(blank=True, null=True)
 
     @property
     def base_url(self):
