@@ -142,6 +142,10 @@ class User(models.Model):
     first_name = models.CharField(max_length=50, blank=True, null=True)
     last_name = models.CharField(max_length=50, blank=True, null=True)
 
+    @property
+    def name(self):
+        return self.first_name or self.username or self.last_name
+
     def __str__(self):
         return '{}'.format(self.first_name or self.username or self.last_name)
 

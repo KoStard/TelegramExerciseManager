@@ -3,6 +3,7 @@ from main.universals import (
     get_request,
     configure_logging,
 )
+from django.utils import timezone
 from time import sleep
 from datetime import datetime
 import logging
@@ -47,7 +48,7 @@ def update_bot(bot: Bot):
     url = bot.base_url + 'getUpdates?' + \
         ('offset={}'.format(bot.offset) if bot.offset else '')
     resp = get_request(url)
-    bot.last_updated = datetime.now()
+    bot.last_updated = timezone.now()
     bot.save()
     for update in resp:
         message = update.get('message')
@@ -67,12 +68,19 @@ def update_bot(bot: Bot):
                 for new_chat_member_data in message['new_chat_members']:
                     if new_chat_member_data['is_bot'] or Participant.objects.filter(pk=new_chat_member_data['id']):
                         continue
-                    Participant(**{
+                    participant = Participant(**{
                         'id': new_chat_member_data['id'],
                         'username': new_chat_member_data.get('username'),
                         'first_name': new_chat_member_data.get('first_name'),
                         'last_name': new_chat_member_data.get('last_name'),
                         'sum_score': 0,
+                    })
+                    participant.save()
+                    GroupSpecificParticipantData(**{
+                        'participant': participant,
+                        'group': group,
+                        'score': 0,
+                        'joined': datetime.fromtimestamp(message['date'])
                     }).save()
             try:
                 participant = Participant.objects.get(pk=message['from']['id'])

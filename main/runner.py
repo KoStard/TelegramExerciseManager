@@ -27,7 +27,7 @@ def run():
         for binding in bot.botbinding_set.all():
             if binding.group.activeProblem:
                 print('{} - {} - {} -> {} right answers'.format(
-                    bot, bot.last_updated, binding.group, len(Answer.objects.filter(
+                    bot.name, bot.last_updated, binding.group, len(Answer.objects.filter(
                         problem=binding.group.activeProblem,
                         group_specific_participant_data__group=binding.group,
                         right=True, processed=False))))
