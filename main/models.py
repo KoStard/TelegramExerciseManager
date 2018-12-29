@@ -1,9 +1,12 @@
 from django.db import models
-from main.universals import get_request
+from main.universals import (
+    get_request,
+    configure_logging,
+)
 import io
 import re
 import logging
-logging.basicConfig(filename='logs.txt', level=logging.DEBUG)
+configure_logging()
 
 MESSAGE_MAX_LENGTH = 4096
 

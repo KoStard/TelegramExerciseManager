@@ -1,9 +1,12 @@
 from main.models import *
-from main.universals import get_request
+from main.universals import (
+    get_request,
+    configure_logging,
+)
 from time import sleep
 from datetime import datetime
 import logging
-logging.basicConfig(filename='logs.txt', level=logging.DEBUG)
+configure_logging()
 
 
 def participant_answering(participant, group, problem, variant):
