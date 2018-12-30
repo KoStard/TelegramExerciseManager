@@ -341,6 +341,13 @@ class GroupSpecificParticipantData(models.Model):
         logging.info('New Role for {} will be {} - score is {}'.format(
             self.participant.name, new_role, self.score))
 
+    def get_highest_role_binding(self):
+        res = None
+        for binding in self.participantgroupbinding_set.all():
+            if not res or binding.role.priority_level > res.role.priority_level:
+                res = binding
+        return res
+
     def __str__(self):
         return '{}-{{{}}}->{}'.format(self.participant, self.score, self.group)
 
