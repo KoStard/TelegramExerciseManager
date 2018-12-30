@@ -57,39 +57,48 @@ class Problem(models.Model):
     chapter = models.CharField(max_length=150, null=True, blank=True)
 
     def __str__(self):
-        return """\\<b>#Problem N{}\\</b>{}\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}""".format(self.index, (
-            "\nFrom chapter: #{}".format(self.chapter) if self.chapter else ''), self.formulation,
-            self.variant_a, self.variant_b,
-            self.variant_c, self.variant_d,
+        return """\\<b>#Problem N{}\\</b>{}\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}""".format(
+            self.index, ("\nFrom chapter: #{}".format(self.chapter)
+                         if self.chapter else ''), self.formulation,
+            self.variant_a, self.variant_b, self.variant_c, self.variant_d,
             self.variant_e)
 
     def get_answer(self):
-        return """\\<b>The right choice is {}\\</b>\n{}\n#Answer to {}\n""".format(self.right_variant, self.answer_formulation,
-                                                                                   self.index)
+        return """\\<b>The right choice is {}\\</b>\n{}\n#Answer to {}\n""".format(
+            self.right_variant, self.answer_formulation, self.index)
 
     def close(self, group):
-        answers = Answer.objects.filter(problem=self, group_specific_participant_data__group=group,
-                                        right=True, processed=False)
+        answers = Answer.objects.filter(
+            problem=self,
+            group_specific_participant_data__group=group,
+            right=True,
+            processed=False)
         for answer in answers:
             answer.process()
             answer.group_specific_participant_data.recalculate_roles()
         return self.get_leader_board(group, answers=answers)
 
     def get_leader_board(self, group, answers=None):
-        answers = answers or Answer.objects.filter(problem=self, group_specific_participant_data__group=group,
-                                                   right=True, processed=False)
+        answers = answers or Answer.objects.filter(
+            problem=self,
+            group_specific_participant_data__group=group,
+            right=True,
+            processed=False)
         res = "Right answers:"
         if len(answers):
             index = 1
             for answer in answers:
-                current = "{}: {} - {}{}".format(index, answer.group_specific_participant_data.participant,
-                                                 answer.group_specific_participant_data.score,
-                                                 (' [{}%]'.format(answer.group_specific_participant_data.percentage)
-                                                  if answer.group_specific_participant_data.percentage else ''))
+                current = "{}: {} - {}{}".format(
+                    index, answer.group_specific_participant_data.participant,
+                    answer.group_specific_participant_data.score,
+                    (' [{}%]'.format(
+                        answer.group_specific_participant_data.percentage)
+                     if answer.group_specific_participant_data.percentage else
+                     ''))
                 if index <= 3:
                     current = '\\<b>{}\\</b>'.format(current)
                 index += 1
-                res += '\n'+current
+                res += '\n' + current
         else:
             res += '\nNo one solved the problem. #Hardcore'
         res += '\n#Problem_Leaderboard'
@@ -174,7 +183,12 @@ class Bot(User):
             self.last_name = resp.get('last_name')
             self.save()
 
-    def send_message(self, group: 'text/id or group', text, *, parse_mode='HTML', reply_to_message_id=None):
+    def send_message(self,
+                     group: 'text/id or group',
+                     text,
+                     *,
+                     parse_mode='HTML',
+                     reply_to_message_id=None):
         if not (isinstance(group, str) or isinstance(group, int)):
             group = group.telegram_id
 
@@ -185,8 +199,8 @@ class Bot(User):
             current = text
             while len(current) > MESSAGE_MAX_LENGTH:
                 f = current.rfind('. ', 0, MESSAGE_MAX_LENGTH)
-                blocks.append(current[:f+1])
-                current = current[f+2:]
+                blocks.append(current[:f + 1])
+                current = current[f + 2:]
             blocks.append(current)
         else:
             blocks.append(text)
@@ -194,9 +208,12 @@ class Bot(User):
         for message in blocks:
             url = self.base_url + 'sendMessage'
             payload = {
-                'chat_id': group,
-                'text': message.replace('<', '&lt;').replace('\\&lt;', '<'),
-                'reply_to_message_id': reply_to_message_id if not resp else resp[-1].get('message_id')
+                'chat_id':
+                group,
+                'text':
+                message.replace('<', '&lt;').replace('\\&lt;', '<'),
+                'reply_to_message_id':
+                reply_to_message_id if not resp else resp[-1].get('message_id')
             }
             if parse_mode:
                 payload['parse_mode'] = parse_mode
@@ -205,7 +222,12 @@ class Bot(User):
             resp.append(resp_c)
         return resp
 
-    def send_image(self, group: 'text/id or group', image_file: io.BufferedReader, *, caption='', reply_to_message_id=None):
+    def send_image(self,
+                   group: 'text/id or group',
+                   image_file: io.BufferedReader,
+                   *,
+                   caption='',
+                   reply_to_message_id=None):
         if not (isinstance(group, str) or isinstance(group, int)):
             group = group.telegram_id
         url = self.base_url + 'sendPhoto'
@@ -214,9 +236,7 @@ class Bot(User):
             'caption': caption,
             'reply_to_message_id': reply_to_message_id,
         }
-        files = {
-            'photo': image_file
-        }
+        files = {'photo': image_file}
         resp = get_request(url, payload=payload, files=files)
         logging.info(resp)
         return resp
@@ -225,16 +245,14 @@ class Bot(User):
         if not (isinstance(group, str) or isinstance(group, int)):
             group = group.telegram_id
         url = self.base_url + 'deleteMessage'
-        payload = {
-            'chat_id': group,
-            'message_id': message_id
-        }
+        payload = {'chat_id': group, 'message_id': message_id}
         resp = get_request(url, payload=payload)
         logging.info(resp)
         return resp
 
     def __str__(self):
-        return '[BOT] {}'.format(self.first_name or self.username or self.last_name)
+        return '[BOT] {}'.format(self.first_name or self.username
+                                 or self.last_name)
 
     class Meta:
         verbose_name = 'Bot'
@@ -272,7 +290,8 @@ class ScoreThreshold(models.Model):
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
     def __str__(self):
-        return '{} [{}; {}]'.format(self.role.name, self.range_min, self.range_max)
+        return '{} [{}; {}]'.format(self.role.name, self.range_min,
+                                    self.range_max)
 
     class Meta:
         verbose_name = 'Score Threshold'
@@ -289,12 +308,15 @@ class GroupSpecificParticipantData(models.Model):
     @property
     def percentage(self):
         if self.score >= 500:
-            return round((1 - sum(answer.problem.value for answer in self.answer_set.filter(right=False)) / self.score)*1000)/10
+            return round((1 - sum(
+                answer.problem.value
+                for answer in self.answer_set.filter(right=False)) / self.score
+                          ) * 1000) / 10
 
     def recalculate_roles(self):
         standard_bindings = [
-            b for b in self.
-            participantgroupbinding_set.all() if b.role.from_stardard_kit
+            b for b in self.participantgroupbinding_set.all()
+            if b.role.from_stardard_kit
         ]
         if len(standard_bindings) >= 1:
             highest_binding = sorted(
@@ -307,8 +329,7 @@ class GroupSpecificParticipantData(models.Model):
 
             new_role = [
                 st.role for st in ScoreThreshold.objects.all()
-                if st.range_min <= self.score
-                and st.range_max >= self.score
+                if st.range_min <= self.score and st.range_max >= self.score
                 and st.role.from_stardard_kit
             ]
             if not new_role or new_role[
@@ -324,8 +345,7 @@ class GroupSpecificParticipantData(models.Model):
             standard_role = None
             new_role = [
                 st.role for st in ScoreThreshold.objects.all()
-                if st.range_min <= self.score
-                and st.range_max >= self.score
+                if st.range_min <= self.score and st.range_max >= self.score
                 and st.role.from_stardard_kit
             ]
             if not new_role:
@@ -336,8 +356,7 @@ class GroupSpecificParticipantData(models.Model):
 
             # Creating new binding
             ParticipantGroupBinding(
-                groupspecificparticipantdata=self,
-                role=new_role).save()
+                groupspecificparticipantdata=self, role=new_role).save()
         logging.info('New Role for {} will be {} - score is {}'.format(
             self.participant.name, new_role, self.score))
 
@@ -364,8 +383,9 @@ class ParticipantGroupBinding(models.Model):
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
     def __str__(self):
-        return '{}-{{{}}}->{}'.format(self.groupspecificparticipantdata.participant,
-                                      self.role.name, self.groupspecificparticipantdata.group)
+        return '{}-{{{}}}->{}'.format(
+            self.groupspecificparticipantdata.participant, self.role.name,
+            self.groupspecificparticipantdata.group)
 
     class Meta:
         verbose_name = 'Participant-Group Binding'

@@ -57,6 +57,7 @@ class AnswerAdmin(admin.ModelAdmin):
 class SubjectGroupBindingAdmin(admin.ModelAdmin):
     pass
 
+
 class ScoreThresholdAdmin(admin.ModelAdmin):
     pass
 
@@ -69,7 +70,8 @@ admin.site.register(Group, GroupAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(Bot, BotAdmin)
 admin.site.register(Participant, ParticipantAdmin)
-admin.site.register(GroupSpecificParticipantData, GroupSpecificParticipantDataAdmin)
+admin.site.register(GroupSpecificParticipantData,
+                    GroupSpecificParticipantDataAdmin)
 admin.site.register(Role, RoleAdmin)
 admin.site.register(ParticipantGroupBinding, ParticipantGroupBindingAdmin)
 admin.site.register(BotBinding, BotBindingAdmin)

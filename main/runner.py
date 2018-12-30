@@ -11,11 +11,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE',
 django.setup()
 from main.worker import *
 
-
 group = Group.objects.get(id=1)
 bot = Bot.objects.all()[0]
 problem = Problem.objects.get(index=180)
-
 
 bots = Bot.objects.all()
 running = True
@@ -27,10 +25,14 @@ def run():
         for binding in bot.botbinding_set.all():
             if binding.group.activeProblem:
                 print('{} - {} - {} -> {} right answers'.format(
-                    bot.name, bot.last_updated, binding.group, len(Answer.objects.filter(
-                        problem=binding.group.activeProblem,
-                        group_specific_participant_data__group=binding.group,
-                        right=True, processed=False))))
+                    bot.name, bot.last_updated, binding.group,
+                    len(
+                        Answer.objects.filter(
+                            problem=binding.group.activeProblem,
+                            group_specific_participant_data__group=binding.
+                            group,
+                            right=True,
+                            processed=False))))
     while running:
         for bot in bots:
             try:
