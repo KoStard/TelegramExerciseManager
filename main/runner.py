@@ -36,7 +36,7 @@ def run():
             try:
                 update_bot(bot)
             except Exception as e:
-                logging.warn("ERROR: {}".format(e))
+                logging.warning("ERROR: {}".format(e))
         if not running:
             break
         sleep(1)

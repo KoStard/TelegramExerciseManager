@@ -7,6 +7,7 @@ from django.utils import timezone
 from time import sleep
 from datetime import datetime
 import logging
+
 # configure_logging()
 
 
@@ -17,30 +18,83 @@ def participant_answering(participant, group, problem, variant):
         group_specific_participant_data = participant.groupspecificparticipantdata_set.get(
             group=group)
     except GroupSpecificParticipantData.DoesNotExist:
-        group_specific_participant_data = GroupSpecificParticipantData(**{
-            'participant': participant,
-            'group': group,
-            'score': 0,
-        })
+        group_specific_participant_data = GroupSpecificParticipantData(
+            **{
+                'participant': participant,
+                'group': group,
+                'score': 0,
+            })
         group_specific_participant_data.save()
-    right_answers_count = len(problem.answer_set.filter(
-        right=True, processed=False, group_specific_participant_data__group=group))  # Getting right answers only from current group
+    right_answers_count = len(
+        problem.answer_set.filter(
+            right=True,
+            processed=False,
+            group_specific_participant_data__group=group)
+    )  # Getting right answers only from current group
     if variant == problem.right_variant.lower():
-        print("Right answer from {} N{}".format(
-            participant, right_answers_count))
+        print("Right answer from {} N{}".format(participant,
+                                                right_answers_count + 1))
         is_right = True
     else:
-        print("Wrong answer from {} - Right answers {}".format(participant,
-                                                               right_answers_count))
-    if not problem.answer_set.filter(group_specific_participant_data=group_specific_participant_data, processed=False):
-        answer = Answer(**{
-            'problem': problem,
-            'answer': variant,
-            'right': is_right,
-            'processed': False,
-            'group_specific_participant_data': group_specific_participant_data,
-        })
+        print("Wrong answer from {} - Right answers {}".format(
+            participant, right_answers_count))
+    if not problem.answer_set.filter(
+            group_specific_participant_data=group_specific_participant_data,
+            processed=False):
+        answer = Answer(
+            **{
+                'problem': problem,
+                'answer': variant,
+                'right': is_right,
+                'processed': False,
+                'group_specific_participant_data':
+                group_specific_participant_data,
+            })
         answer.save()
+
+
+available_entities = {
+    'mention': 0,
+    'hashtag': 1,
+    'cashtag': 0,
+    'bot_command': 0,
+    'url': 1,
+    'email': 1,
+    'phone_number': 0,
+    'bold': 0,
+    'italic': 0,
+    'code': 0,
+    'pre': 0,
+    'text_link': 1,
+    'text_mention': 0,
+}
+
+
+def check_entities(bot: Bot, group: Group, participant: Participant,
+                   entities: list, message: dict):
+    groupspecificparticipantdata = participant.groupspecificparticipantdata_set.filter(
+        group=group)
+    resp = {'status': True, 'unknown': False}
+    priority_level = 0
+    if groupspecificparticipantdata:
+        priority_level = max(
+            participantgroupbinding.role.priority_level
+            for participantgroupbinding in groupspecificparticipantdata[0].
+            participantgroupbinding_set.all())
+    for entity in entities:
+        entity = entity['type']
+        if available_entities.get(entity) is None:
+            resp['status'] = False
+            resp['cause'] = 'Unknown entity {}'.format(entity)
+            resp['unknown'] = True
+            return resp
+        if available_entities[entity] > priority_level:
+            resp['status'] = False
+            resp[
+                'cause'] = '{} entity is not allowed for users with priority level lower than {}'.format(
+                    entity, available_entities[entity])
+            return resp
+    return resp
 
 
 def update_bot(bot: Bot):
@@ -53,78 +107,130 @@ def update_bot(bot: Bot):
     for update in resp:
         message = update.get('message')
         if message and not message['from']['is_bot']:
-            print('{} [{}] -> {}'.format(message['from'].get('first_name') or message['from'].get('username') or
-                                         message['from'].get('last_name'), bot, message.get('text') or "|UNKNOWN|"))
-            logging.info('{}| {} [{}] -> {}'.format(datetime.now(), message['from'].get('first_name') or message['from'].get('username') or
-                                                    message['from'].get('last_name'), bot, message.get('text') or message))
+            print('{} [{}] -> {}'.format(
+                message['from'].get('first_name')
+                or message['from'].get('username')
+                or message['from'].get('last_name'), bot,
+                message.get('text') or "|UNKNOWN|"))
+            logging.info('{}| {} [{}] -> {}'.format(
+                datetime.now(), message['from'].get('first_name')
+                or message['from'].get('username')
+                or message['from'].get('last_name'), bot,
+                message.get('text') or message))
             try:
                 group = Group.objects.get(telegram_id=message['chat']['id'])
             except Group.DoesNotExist:
-                bot.send_message(message['chat']['id'],
-                                 'Hi, if you want to use this bot in your groups too, then contact with @KoStard')
+                bot.send_message(
+                    message['chat']['id'],
+                    'Hi, if you want to use this bot in your groups too, then contact with @KoStard'
+                )
+                bot.offset = update['update_id'] + 1
+                bot.save()
                 continue
 
             if message.get('new_chat_members'):
                 for new_chat_member_data in message['new_chat_members']:
-                    if new_chat_member_data['is_bot'] or Participant.objects.filter(pk=new_chat_member_data['id']):
+                    if new_chat_member_data[
+                            'is_bot'] or Participant.objects.filter(
+                                pk=new_chat_member_data['id']):
                         continue
-                    participant = Participant(**{
-                        'id': new_chat_member_data['id'],
-                        'username': new_chat_member_data.get('username'),
-                        'first_name': new_chat_member_data.get('first_name'),
-                        'last_name': new_chat_member_data.get('last_name'),
-                        'sum_score': 0,
-                    })
+                    participant = Participant(
+                        **{
+                            'id': new_chat_member_data['id'],
+                            'username': new_chat_member_data.get('username'),
+                            'first_name': new_chat_member_data.get(
+                                'first_name'),
+                            'last_name': new_chat_member_data.get('last_name'),
+                            'sum_score': 0,
+                        })
                     participant.save()
-                    GroupSpecificParticipantData(**{
-                        'participant': participant,
-                        'group': group,
-                        'score': 0,
-                        'joined': datetime.fromtimestamp(message['date'])
-                    }).save()
+                    GroupSpecificParticipantData(
+                        **{
+                            'participant': participant,
+                            'group': group,
+                            'score': 0,
+                            'joined': datetime.fromtimestamp(message['date'])
+                        }).save()
             try:
                 participant = Participant.objects.get(pk=message['from']['id'])
             except Participant.DoesNotExist:
-                participant = Participant(**{
-                    'id': message['from']['id'],
-                    'username': message['from'].get('username'),
-                    'first_name': message['from'].get('first_name'),
-                    'last_name': message['from'].get('last_name'),
-                    'sum_score': 0,
-                })
+                participant = Participant(
+                    **{
+                        'id': message['from']['id'],
+                        'username': message['from'].get('username'),
+                        'first_name': message['from'].get('first_name'),
+                        'last_name': message['from'].get('last_name'),
+                        'sum_score': 0,
+                    })
                 participant.save()
             text = message.get('text')
+            entities = message.get('entities')
+            if entities:
+                resp = check_entities(bot, group, participant, entities,
+                                      message)
+                if not resp['status']:
+                    logging.info(resp['cause'])
+                    if not resp['unknown']:
+                        bot.send_message(
+                            group,
+                            'Dear {}, your message will be removed, because\n{}\nYou have [{}] roles.\
+                            \nFor more information contact with @KoStard'.
+                            format(
+                                participant.name, resp['cause'], ', '.join(
+                                    '{} - {}'.format(
+                                        participantgroupbinding.role.name,
+                                        participantgroupbinding.role.
+                                        priority_level)
+                                    for participantgroupbinding in participant.
+                                    groupspecificparticipantdata_set.get(
+                                        group=group).
+                                    participantgroupbinding_set.all())),
+                            reply_to_message_id=message['message_id'])
+                        bot.delete_message(group, message['message_id'])
+                        bot.offset = update['update_id'] + 1
+                        bot.save()
+                        continue
             if text:
                 if len(text) == 1 and (
-                        ord(text) in range(ord('a'), ord('e') + 1) or ord(text) in range(ord('A'), ord('E') + 1)):
-                    if group.activeProblem and BotBinding.objects.filter(bot=bot, group=group):
-                        participant_answering(
-                            participant, group, group.activeProblem, text)
+                        ord(text) in range(ord('a'),
+                                           ord('e') + 1)
+                        or ord(text) in range(ord('A'),
+                                              ord('E') + 1)):
+                    if group.activeProblem and BotBinding.objects.filter(
+                            bot=bot, group=group):
+                        participant_answering(participant, group,
+                                              group.activeProblem, text)
                 elif text[0] == '/':
                     command = text[1:].split(' ')[0]
                     if command in available_commands:
-                        participant_group_bindings = ParticipantGroupBinding.objects.filter(participant=participant,
-                                                                                            group=group)
+                        participant_group_bindings = participant.groupspecificparticipantdata_set.get(
+                            group=group).participantgroupbinding_set.all()
                         if participant_group_bindings:
-                            max_priority_role = \
-                                sorted(participant_group_bindings, key=lambda binding: binding.role.priority_level)[
-                                    -1].role
+                            max_priority_role = sorted(
+                                participant_group_bindings,
+                                key=lambda binding: binding.role.priority_level
+                            )[-1].role
                         else:
                             max_priority_role = Role.objects.get(
                                 value='participant')
-                        if max_priority_role.priority_level >= available_commands[command][1]:
+                        if max_priority_role.priority_level >= available_commands[
+                                command][1]:
                             if available_commands[command][2]:
-                                if not BotBinding.objects.filter(bot=bot, group=group):
-                                    bot.send_message(group,
-                                                     'Hi, if you want to use this bot in '
-                                                     'your groups too, then contact with @KoStard')
+                                if not BotBinding.objects.filter(
+                                        bot=bot, group=group):
+                                    bot.send_message(
+                                        group,
+                                        'Hi, if you want to use this bot in '
+                                        'your groups too, then contact with @KoStard'
+                                    )
                                     return
-                            available_commands[command][0](
-                                bot, group, text, message)
+                            available_commands[command][0](bot, group, text,
+                                                           message)
                         else:
-                            bot.send_message(group,
-                                             "Sorry dear {}, your role \"{}\" is not granted to use this command.".format(
-                                                 participant, max_priority_role.name))
+                            bot.send_message(
+                                group,
+                                "Sorry dear {}, your role \"{}\" is not granted to use this command."
+                                .format(participant, max_priority_role.name))
                     else:
                         bot.send_message(
                             group, 'Invalid command "{}"'.format(command))
@@ -141,11 +247,14 @@ def send_problem(bot: Bot, group: Group, text, message):
         bot.send_message(group, 'Invalid problem number "{}".')
     else:
         form_resp = bot.send_message(group, str(problem))
-        logging.info("Sending problem {}".format(problem.index))
+        logging.debug("Sending problem {}".format(problem.index))
         if problem.img and form_resp:
-            bot.send_image(group, open('media/'+problem.img.name,
-                                       'rb'), reply_to_message_id=form_resp[0].get('message_id'), caption='Image of problem N{}.'.format(problem.index))
-            logging.info("Sending image for problem {}".format(problem.index))
+            bot.send_image(
+                group,
+                open('media/' + problem.img.name, 'rb'),
+                reply_to_message_id=form_resp[0].get('message_id'),
+                caption='Image of problem N{}.'.format(problem.index))
+            logging.debug("Sending image for problem {}".format(problem.index))
         group.activeSubject = problem.subject
         group.activeProblem = problem
         group.save()
@@ -160,7 +269,8 @@ def answer_problem(bot, group, text, message):
         index = int(text.split()[1])
         if problem and index > problem.index:
             bot.send_message(
-                group, "You can't send new problem's answer without opening it.")
+                group,
+                "You can't send new problem's answer without opening it.")
             return
         elif not problem or index < problem.index:
             try:
@@ -180,7 +290,9 @@ def start_in_group(bot, group, text, message):
     binding = BotBinding(bot=bot, group=group)
     binding.save()
     bot.send_message(
-        group, "This group is now bound with me, to break the connection, use /stop command.")
+        group,
+        "This group is now bound with me, to break the connection, use /stop command."
+    )
 
 
 def remove_from_group(bot, group, text, message):
@@ -208,8 +320,9 @@ def get_score(bot, group, text, message):
             participant=participant, group=group)
         if specific:
             specific = specific[0]
-            bot.send_message(group, "{}'s score is {}".format(
-                str(participant), specific.score))
+            bot.send_message(
+                group, "{}'s score is {}".format(
+                    str(participant), specific.score))
 
 
 # (function, min_priority_level, needs_binding)

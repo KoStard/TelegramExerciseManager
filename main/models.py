@@ -220,6 +220,18 @@ class Bot(User):
         logging.info(resp)
         return resp
 
+    def delete_message(self, group: str or Group, message_id: int or str):
+        if not (isinstance(group, str) or isinstance(group, int)):
+            group = group.telegram_id
+        url = self.base_url + 'deleteMessage'
+        payload = {
+            'chat_id': group,
+            'message_id': message_id
+        }
+        resp = get_request(url, payload=payload)
+        logging.info(resp)
+        return resp
+
     def __str__(self):
         return '[BOT] {}'.format(self.first_name or self.username or self.last_name)
 
@@ -272,13 +284,15 @@ class Role(models.Model):
 
 
 class ParticipantGroupBinding(models.Model):
-    """ Participant-Group binding """
-    participant = models.ForeignKey(Participant, on_delete=models.CASCADE)
-    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    """ Participant-Group binding 
+    - Same participant can have multiple bindings in the same group"""
+    groupspecificparticipantdata = models.ForeignKey(
+        GroupSpecificParticipantData, on_delete=models.CASCADE)
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
     def __str__(self):
-        return '{}-{{{}}}>{}'.format(self.participant, self.role.priority_level, self.group)
+        return '{}-{{{}}}->{}'.format(self.groupspecificparticipantdata.participant,
+                                      self.role.name, self.groupspecificparticipantdata.group)
 
     class Meta:
         verbose_name = 'Participant-Group Binding'
