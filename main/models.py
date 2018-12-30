@@ -1,6 +1,6 @@
 from django.db import models
 from main.universals import (
-    get_request,
+    get_response,
     configure_logging,
 )
 import io
@@ -176,7 +176,7 @@ class Bot(User):
 
     def update_information(self):
         url = self.base_url + 'getMe'
-        resp = get_request(url)
+        resp = get_response(url)
         if resp:
             self.username = resp.get('username')
             self.first_name = resp.get('first_name')
@@ -217,7 +217,7 @@ class Bot(User):
             }
             if parse_mode:
                 payload['parse_mode'] = parse_mode
-            resp_c = get_request(url, payload=payload)
+            resp_c = get_response(url, payload=payload)
             logging.info(resp_c)
             resp.append(resp_c)
         return resp
@@ -237,7 +237,7 @@ class Bot(User):
             'reply_to_message_id': reply_to_message_id,
         }
         files = {'photo': image_file}
-        resp = get_request(url, payload=payload, files=files)
+        resp = get_response(url, payload=payload, files=files)
         logging.info(resp)
         return resp
 
@@ -246,7 +246,7 @@ class Bot(User):
             group = group.telegram_id
         url = self.base_url + 'deleteMessage'
         payload = {'chat_id': group, 'message_id': message_id}
-        resp = get_request(url, payload=payload)
+        resp = get_response(url, payload=payload)
         logging.info(resp)
         return resp
 
@@ -441,3 +441,29 @@ class SubjectGroupBinding(models.Model):
     class Meta:
         verbose_name = 'Subject-Group Binding'
         db_table = 'db_subject_group_binding'
+
+
+class TelegraphAccount(models.Model):
+    """ Telegraph Account model """
+    access_token = models.CharField(max_length=70)
+    auth_url = models.URLField()
+
+    def __str__(self):
+        return '{}'.format(self.access_token)
+
+    class Meta:
+        verbose_name = 'Telegraph Account'
+        db_table = 'db_telegraph_account'
+
+
+class TelegraphPage(models.Model):
+    """ Telegraph Page model """
+    path = models.CharField(max_length=150)
+    url = models.URLField()
+
+    def __str__(self):
+        return '{}'.format(self.path)
+
+    class Meta:
+        verbose_name = 'Telegraph Page'
+        db_table = 'db_telegraph_page'

@@ -3,14 +3,14 @@ import json
 import logging
 
 
-def get_request(url, *, payload=None, files=None):
+def get_response(url, *, payload=None, files=None):
     if files:
         resp = requests.post(url, params=payload, files=files)
     else:
         resp = requests.get(url, params=payload)
     if resp.status_code == 200:
-        return json.loads(
-            resp.content.decode('utf-8'), encoding='utf-8')['result']
+        res = json.loads(resp.content.decode('utf-8'), encoding='utf-8')
+        return res.get('result') or res
 
 
 def configure_logging():

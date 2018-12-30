@@ -1,6 +1,6 @@
 from main.models import *
 from main.universals import (
-    get_request,
+    get_response,
     configure_logging,
 )
 from django.utils import timezone
@@ -101,7 +101,7 @@ def update_bot(bot: Bot):
     """ Will get bot updates """
     url = bot.base_url + 'getUpdates?' + \
         ('offset={}'.format(bot.offset) if bot.offset else '')
-    resp = get_request(url)
+    resp = get_response(url)
     bot.last_updated = timezone.now()
     bot.save()
     for update in resp:
