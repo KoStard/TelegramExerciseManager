@@ -54,19 +54,19 @@ def participant_answering(participant, group, problem, variant):
 
 
 available_entities = {
-    'mention': 0,
+    'mention': -1,
     'hashtag': 1,
     'cashtag': 0,
     'bot_command': 0,
-    'url': 1,
+    'url': 2,
     'email': 1,
     'phone_number': 0,
     'bold': 0,
     'italic': 0,
     'code': 0,
     'pre': 0,
-    'text_link': 1,
-    'text_mention': 0,
+    'text_link': 2,
+    'text_mention': -1,
 }
 
 
@@ -75,7 +75,7 @@ def check_entities(bot: Bot, group: Group, participant: Participant,
     groupspecificparticipantdata = participant.groupspecificparticipantdata_set.filter(
         group=group)
     resp = {'status': True, 'unknown': False}
-    priority_level = 0
+    priority_level = -1
     if groupspecificparticipantdata:
         priority_level = max(
             participantgroupbinding.role.priority_level
@@ -210,11 +210,10 @@ def update_bot(bot: Bot):
                                 participant_group_bindings,
                                 key=lambda binding: binding.role.priority_level
                             )[-1].role
+                            priority_level = max_priority_role.priority_level
                         else:
-                            max_priority_role = Role.objects.get(
-                                value='participant')
-                        if max_priority_role.priority_level >= available_commands[
-                                command][1]:
+                            priority_level = -1
+                        if priority_level >= available_commands[command][1]:
                             if available_commands[command][2]:
                                 if not BotBinding.objects.filter(
                                         bot=bot, group=group):

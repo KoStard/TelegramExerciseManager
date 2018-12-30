@@ -72,6 +72,7 @@ class Problem(models.Model):
                                         right=True, processed=False)
         for answer in answers:
             answer.process()
+            answer.group_specific_participant_data.recalculate_roles()
         return self.get_leader_board(group, answers=answers)
 
     def get_leader_board(self, group, answers=None):
@@ -249,6 +250,35 @@ class Participant(User):
         db_table = 'db_participant'
 
 
+class Role(models.Model):
+    """ Role """
+    name = models.CharField(max_length=50)
+    value = models.CharField(max_length=50)
+    priority_level = models.IntegerField(default=1)
+    from_stardard_kit = models.BooleanField(default=False)
+
+    def __str__(self):
+        return '[{}] {}'.format(self.priority_level, self.name)
+
+    class Meta:
+        verbose_name = 'Role'
+        db_table = 'db_role'
+
+
+class ScoreThreshold(models.Model):
+    """ Score threshold """
+    range_min = models.IntegerField()
+    range_max = models.IntegerField()
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return '{} [{}; {}]'.format(self.role.name, self.range_min, self.range_max)
+
+    class Meta:
+        verbose_name = 'Score Threshold'
+        db_table = 'db_score_threshold'
+
+
 class GroupSpecificParticipantData(models.Model):
     """ Group-specific participant data """
     participant = models.ForeignKey(Participant, on_delete=models.CASCADE)
@@ -261,26 +291,62 @@ class GroupSpecificParticipantData(models.Model):
         if self.score >= 500:
             return round((1 - sum(answer.problem.value for answer in self.answer_set.filter(right=False)) / self.score)*1000)/10
 
+    def recalculate_roles(self):
+        standard_bindings = [
+            b for b in self.
+            participantgroupbinding_set.all() if b.role.from_stardard_kit
+        ]
+        if len(standard_bindings) >= 1:
+            highest_binding = sorted(
+                standard_bindings,
+                key=lambda binding: binding.role.priority_level)[-1]
+            for binding in standard_bindings:
+                if binding != highest_binding:
+                    binding.delete()
+            standard_role = highest_binding.role
+
+            new_role = [
+                st.role for st in ScoreThreshold.objects.all()
+                if st.range_min <= self.score
+                and st.range_max >= self.score
+                and st.role.from_stardard_kit
+            ]
+            if not new_role or new_role[
+                    0].priority_level <= standard_role.priority_level:
+                return
+            new_role = new_role[0]
+            if new_role.priority_level == -1:
+                return
+            # If the participant got to the new level, then setting new role for the binding
+            highest_binding.role = new_role
+            highest_binding.save()
+        else:
+            standard_role = None
+            new_role = [
+                st.role for st in ScoreThreshold.objects.all()
+                if st.range_min <= self.score
+                and st.range_max >= self.score
+                and st.role.from_stardard_kit
+            ]
+            if not new_role:
+                return
+            new_role = new_role[0]
+            if new_role.priority_level == -1:
+                return
+
+            # Creating new binding
+            ParticipantGroupBinding(
+                groupspecificparticipantdata=self,
+                role=new_role).save()
+        logging.info('New Role for {} will be {} - score is {}'.format(
+            self.participant.name, new_role, self.score))
+
     def __str__(self):
         return '{}-{{{}}}->{}'.format(self.participant, self.score, self.group)
 
     class Meta:
         verbose_name = 'Group Specific Participant Data'
         db_table = 'db_group_specific_participant_data'
-
-
-class Role(models.Model):
-    """ Role """
-    name = models.CharField(max_length=50)
-    value = models.CharField(max_length=50)
-    priority_level = models.IntegerField(default=1)
-
-    def __str__(self):
-        return '[{}] {}'.format(self.priority_level, self.name)
-
-    class Meta:
-        verbose_name = 'Role'
-        db_table = 'db_role'
 
 
 class ParticipantGroupBinding(models.Model):
