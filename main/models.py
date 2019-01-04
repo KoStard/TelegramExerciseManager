@@ -156,6 +156,13 @@ class User(models.Model):
     def name(self):
         return self.first_name or self.username or self.last_name
 
+    @property
+    def full_name(self):
+        if self.first_name or self.last_name:
+            return ' '.join(n for n in (self.first_name, self.last_name) if n)
+        else:
+            return self.username
+
     def __str__(self):
         return '{}'.format(self.first_name or self.username or self.last_name)
 
@@ -182,6 +189,15 @@ class Bot(User):
             self.first_name = resp.get('first_name')
             self.last_name = resp.get('last_name')
             self.save()
+
+    def get_group_member(self, group, participant):
+        if isinstance(group, Group):
+            group = group.telegram_id
+        if isinstance(participant, Participant):
+            participant = participant.id
+        url = self.base_url + 'getChatMember'
+        payload = {'chat_id': group, 'user_id': participant}
+        return get_response(url, payload=payload)
 
     def send_message(self,
                      group: 'text/id or group',
@@ -360,9 +376,28 @@ class GroupSpecificParticipantData(models.Model):
         logging.info('New Role for {} will be {} - score is {}'.format(
             self.participant.name, new_role, self.score))
 
-    def get_highest_role_binding(self):
+    @property
+    def highest_role_binding(self):
         res = None
         for binding in self.participantgroupbinding_set.all():
+            if not res or binding.role.priority_level > res.role.priority_level:
+                res = binding
+        return res
+
+    @property
+    def highest_standard_role_binding(self):
+        res = None
+        for binding in self.participantgroupbinding_set.filter(
+                role__from_stardard_kit=True):
+            if not res or binding.role.priority_level > res.role.priority_level:
+                res = binding
+        return res
+
+    @property
+    def highest_non_standard_role_binding(self):
+        res = None
+        for binding in self.participantgroupbinding_set.filter(
+                role__from_stardard_kit=False):
             if not res or binding.role.priority_level > res.role.priority_level:
                 res = binding
         return res
@@ -414,6 +449,7 @@ class Answer(models.Model):
     processed = models.BooleanField(default=False)
     group_specific_participant_data = models.ForeignKey(
         GroupSpecificParticipantData, on_delete=models.CASCADE)
+    date = models.DateTimeField(blank=True, null=True)
 
     def process(self):
         if self.right and not self.processed:
@@ -460,9 +496,13 @@ class TelegraphPage(models.Model):
     """ Telegraph Page model """
     path = models.CharField(max_length=150)
     url = models.URLField()
+    account = models.ForeignKey(TelegraphAccount, on_delete=models.CASCADE)
+    group = models.ForeignKey(
+        Group, on_delete=models.CASCADE, blank=True,
+        null=True)  # Maybe we'll create a page without group
 
     def __str__(self):
-        return '{}'.format(self.path)
+        return '{} for {}'.format(self.path, self.group)
 
     class Meta:
         verbose_name = 'Telegraph Page'
