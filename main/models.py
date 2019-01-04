@@ -323,7 +323,7 @@ class GroupSpecificParticipantData(models.Model):
 
     @property
     def percentage(self):
-        if self.score >= 500:
+        if self.score >= 450:
             return round((1 - sum(
                 answer.problem.value
                 for answer in self.answer_set.filter(right=False)) / self.score
