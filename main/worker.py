@@ -82,9 +82,9 @@ def check_entities(bot: Bot, group: Group, participant: Participant,
     priority_level = -1
     if groupspecificparticipantdata:
         priority_level = max(
-            participantgroupbinding.role.priority_level
+            (participantgroupbinding.role.priority_level
             for participantgroupbinding in groupspecificparticipantdata[0].
-            participantgroupbinding_set.all())
+            participantgroupbinding_set.all()), default=0)
     for entity in entities:
         entity = entity["type"]
         if available_entities.get(entity) is None:
@@ -201,7 +201,7 @@ def update_bot(bot: Bot):
                                 }).save()
                         bot.send_message(
                             group,
-                            "Dear {}, your message will be removed, because\n{}\nYou have [{}] roles.\
+                            "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
                             \nFor more information contact with @KoStard"                                                                                                                                                  .
                             format(
                                 participant.name,
@@ -280,13 +280,16 @@ def send_problem(bot: Bot, group: Group, text, message):
         form_resp = bot.send_message(group, str(problem))
         logging.debug("Sending problem {}".format(problem.index))
         if problem.img and form_resp:
-            bot.send_image(
-                group,
-                open("media/" + problem.img.name, "rb"),
-                reply_to_message_id=form_resp[0].get("message_id"),
-                caption="Image of problem N{}.".format(problem.index),
-            )
-            logging.debug("Sending image for problem {}".format(problem.index))
+            try:
+                bot.send_image(
+                    group,
+                    open("media/" + problem.img.name, "rb"),
+                    reply_to_message_id=form_resp[0].get("message_id"),
+                    caption="Image of problem N{}.".format(problem.index),
+                )
+                logging.debug("Sending image for problem {}".format(problem.index))
+            except Exception as e:
+                print("Can't send image {}".format(problem.img))
         group.activeSubject = problem.subject
         group.activeProblem = problem
         group.save()
