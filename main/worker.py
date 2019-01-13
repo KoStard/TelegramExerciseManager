@@ -101,11 +101,14 @@ def check_entities(bot: Bot, group: Group, participant: Participant,
     return resp
 
 
-def update_bot(bot: Bot):
+def update_bot(bot: Bot, *, timeout=60):
     """ Will get bot updates """
-    url = (bot.base_url + "getUpdates?" +
-           ("offset={}".format(bot.offset) if bot.offset else ""))
-    resp = get_response(url)
+    url = bot.base_url + "getUpdates"
+    payload = {
+        'offset': bot.offset or "",
+        'timeout': timeout
+    }
+    resp = get_response(url, payload=payload)
     bot.last_updated = timezone.now()
     bot.save()
     for update in resp:
@@ -243,6 +246,7 @@ def update_bot(bot: Bot):
                             )[-1].role
                             priority_level = max_priority_role.priority_level
                         else:
+                            max_priority_role = Role.objects.get(value='guest')
                             priority_level = -1
                         if priority_level >= available_commands[command][1]:
                             if available_commands[command][2]:
