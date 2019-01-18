@@ -164,7 +164,7 @@ class User(models.Model):
             return self.username
 
     def __str__(self):
-        return '{}'.format(self.first_name or self.username or self.last_name)
+        return '{}'.format(self.name)
 
     class Meta:
         verbose_name = 'User'
