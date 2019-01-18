@@ -2,6 +2,7 @@ import django
 import sys
 import os
 import logging
+from datetime import datetime
 
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_PATH)
@@ -9,6 +10,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE',
                       'TelegramProblemGenerator.settings')
 
 django.setup()
+from django.utils import timezone
 from main.worker import *
 
 group = Group.objects.get(id=1)
@@ -33,6 +35,21 @@ def run():
                             group,
                             right=True,
                             processed=False))))
+        td = datetime.now(timezone.utc) - bot.last_updated
+        print("{} from last update.".format(td))
+        if (td.days):
+            logging.info("***** UPDATE DATA FOR BOT {} *****".format(bot.name))
+            logging.info(
+                get_response(
+                    bot.base_url + "getUpdates",
+                    payload={
+                        'offset': bot.offset or "",
+                        'timeout': timeout
+                    }))
+            if input(
+                    "WARNING: The data can be not up-to-date, so you'll get all the updates in the logs, do you want to continue? y/N: "
+            ) != 'y':
+                return
     while running:
         for bot in bots:
             try:
