@@ -101,7 +101,7 @@ def check_entities(bot: Bot, group: Group, participant: Participant,
     return resp
 
 
-def update_bot(bot: Bot, *, timeout=60):
+def update_bot(bot: Bot, *, timeout=10):
     """ Will get bot updates """
     url = bot.base_url + "getUpdates"
     payload = {
