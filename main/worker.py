@@ -128,7 +128,7 @@ def check_message_bindings(bot: Bot, group: Group, participant: Participant,
              participantgroupbinding_set.all()),
             default=0)
     for message_binding in available_message_bindings:
-        if message_binding in message:
+        if message_binding in message and available_message_bindings[message_binding] > priority_level:
             resp["status"] = False
             if ("cause" not in resp):
                 resp["cause"] = []
@@ -152,7 +152,8 @@ def update_bot(bot: Bot, *, timeout=10):
                 or message["from"].get("username")
                 or message["from"].get("last_name"),
                 bot,
-                message.get("text") or (message.get('new_chat_member') and "New Chat Member") or "|UNKNOWN|",
+                message.get("text") or (message.get('new_chat_member') and "New Chat Member")
+                or (', '.join(key for key in available_message_bindings.keys() if message.get(key)))  or "|UNKNOWN|",
             ))
             logging.info("{}| {} [{}] -> {}".format(
                 timezone.now(),
