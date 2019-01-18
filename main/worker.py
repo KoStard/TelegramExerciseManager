@@ -178,6 +178,7 @@ def update_bot(bot: Bot, *, timeout=10):
                         "last_name": message["from"].get("last_name"),
                         "sum_score": 0,
                     })
+                participant.save()
                 GroupSpecificParticipantData(**{
                     "participant": participant,
                     "group": group,
@@ -188,7 +189,7 @@ def update_bot(bot: Bot, *, timeout=10):
                 participant.username = message["from"].get("username")
                 participant.first_name = message["from"].get("first_name")
                 participant.last_name = message["from"].get("last_name")
-            participant.save()
+                participant.save()
             text = message.get("text")
             entities = message.get("entities")
             if entities:
@@ -238,7 +239,7 @@ def update_bot(bot: Bot, *, timeout=10):
                         participant_answering(participant, group,
                                               group.activeProblem, text)
                 elif text[0] == "/":
-                    command = text[1:].split(" ")[0]
+                    command = text[1:].split(" ")[0].split('@')[0]
                     if command in available_commands:
                         participant_group_bindings = participant.groupspecificparticipantdata_set.get(
                             group=group).participantgroupbinding_set.all()
