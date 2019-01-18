@@ -102,6 +102,41 @@ def check_entities(bot: Bot, group: Group, participant: Participant,
     return resp
 
 
+available_message_bindings = {
+    "document": -1,
+    "sticker": 0,
+    "photo": 1,
+    "audio": 2,
+    "animation": 2,
+    "voice": 2,
+    "game": 3,
+    "video": 3,
+    "video_note": 3,
+}
+
+
+def check_message_bindings(bot: Bot, group: Group, participant: Participant,
+                   message: dict):
+    groupspecificparticipantdata = participant.groupspecificparticipantdata_set.filter(
+        group=group)
+    resp = {"status": True, "unknown": False}
+    priority_level = -1
+    if groupspecificparticipantdata:
+        priority_level = max(
+            (participantgroupbinding.role.priority_level
+             for participantgroupbinding in groupspecificparticipantdata[0].
+             participantgroupbinding_set.all()),
+            default=0)
+    for message_binding in available_message_bindings:
+        if message_binding in message:
+            resp["status"] = False
+            if ("cause" not in resp):
+                resp["cause"] = []
+            resp["cause"].append("\"{}\" message binding is not allowed for users with priority level lower than {}".format(
+                    message_binding, available_message_bindings[message_binding]))
+    return resp
+
+
 def update_bot(bot: Bot, *, timeout=10):
     """ Will get bot updates """
     url = bot.base_url + "getUpdates"
@@ -193,11 +228,11 @@ def update_bot(bot: Bot, *, timeout=10):
             text = message.get("text")
             entities = message.get("entities")
             if entities:
-                resp = check_entities(bot, group, participant, entities,
+                entities_check_resp = check_entities(bot, group, participant, entities,
                                       message)
-                if not resp["status"]:
-                    logging.info(resp["cause"])
-                    if not resp["unknown"]:
+                if not entities_check_resp["status"]:
+                    logging.info(entities_check_resp["cause"])
+                    if not entities_check_resp["unknown"]:
                         if not participant.groupspecificparticipantdata_set.filter(
                                 group=group):
                             GroupSpecificParticipantData(
@@ -212,7 +247,7 @@ def update_bot(bot: Bot, *, timeout=10):
                             \nFor more information contact with @KoStard".
                             format(
                                 participant.name,
-                                resp["cause"],
+                                entities_check_resp["cause"],
                                 ", ".join("{} - {}".format(
                                     participantgroupbinding.role.name,
                                     participantgroupbinding.role.
@@ -228,6 +263,40 @@ def update_bot(bot: Bot, *, timeout=10):
                         bot.offset = update["update_id"] + 1
                         bot.save()
                         continue
+            message_bindings_check_resp = check_message_bindings(bot, group, participant, message)
+            if not message_bindings_check_resp["status"]:
+                logging.info(message_bindings_check_resp["cause"])
+                if not message_bindings_check_resp["unknown"]:
+                    if not participant.groupspecificparticipantdata_set.filter(
+                            group=group):
+                        GroupSpecificParticipantData(
+                            **{
+                                "participant": participant,
+                                "group": group,
+                                "score": 0,
+                            }).save()
+                    bot.send_message(
+                        group,
+                        "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
+                        \nFor more information contact with @KoStard".
+                        format(
+                            participant.name,
+                            ', '.join(message_bindings_check_resp["cause"]),
+                            ", ".join("{} - {}".format(
+                                participantgroupbinding.role.name,
+                                participantgroupbinding.role.
+                                priority_level,
+                            ) for participantgroupbinding in participant.
+                                        groupspecificparticipantdata_set.get(
+                                            group=group).
+                                        participantgroupbinding_set.all()),
+                        ),
+                        reply_to_message_id=message["message_id"],
+                    )
+                    bot.delete_message(group, message["message_id"])
+                    bot.offset = update["update_id"] + 1
+                    bot.save()
+                    continue
             if text:
                 if len(text) == 1 and (
                         ord(text) in range(ord("a"),
