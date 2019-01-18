@@ -83,8 +83,9 @@ def check_entities(bot: Bot, group: Group, participant: Participant,
     if groupspecificparticipantdata:
         priority_level = max(
             (participantgroupbinding.role.priority_level
-            for participantgroupbinding in groupspecificparticipantdata[0].
-            participantgroupbinding_set.all()), default=0)
+             for participantgroupbinding in groupspecificparticipantdata[0].
+             participantgroupbinding_set.all()),
+            default=0)
     for entity in entities:
         entity = entity["type"]
         if available_entities.get(entity) is None:
@@ -104,10 +105,7 @@ def check_entities(bot: Bot, group: Group, participant: Participant,
 def update_bot(bot: Bot, *, timeout=10):
     """ Will get bot updates """
     url = bot.base_url + "getUpdates"
-    payload = {
-        'offset': bot.offset or "",
-        'timeout': timeout
-    }
+    payload = {'offset': bot.offset or "", 'timeout': timeout}
     resp = get_response(url, payload=payload)
     bot.last_updated = timezone.now()
     bot.save()
@@ -141,6 +139,9 @@ def update_bot(bot: Bot, *, timeout=10):
                 continue
 
             if message.get("new_chat_members"):
+                logging.info(
+                    message
+                )  # Temporary -> to get new chat member message structure
                 for new_chat_member_data in message["new_chat_members"]:
                     if new_chat_member_data[
                             "is_bot"] or Participant.objects.filter(
@@ -180,12 +181,17 @@ def update_bot(bot: Bot, *, timeout=10):
                         "last_name": message["from"].get("last_name"),
                         "sum_score": 0,
                     })
-                participant.save()
                 GroupSpecificParticipantData(**{
                     "participant": participant,
                     "group": group,
                     "score": 0
                 }).save()
+            else:
+                # Updating the participant information when getting an update from him/her
+                participant.username = message["from"].get("username")
+                participant.first_name = message["from"].get("first_name")
+                participant.last_name = message["from"].get("last_name")
+            participant.save()
             text = message.get("text")
             entities = message.get("entities")
             if entities:
@@ -205,7 +211,7 @@ def update_bot(bot: Bot, *, timeout=10):
                         bot.send_message(
                             group,
                             "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard"                                                                                                                                                  .
+                            \nFor more information contact with @KoStard".
                             format(
                                 participant.name,
                                 resp["cause"],
@@ -255,7 +261,9 @@ def update_bot(bot: Bot, *, timeout=10):
                                     bot.send_message(
                                         group,
                                         "Hi, if you want to use this bot in "
-                                        "your groups too, then contact with @KoStard",
+                                        "a new group too, then contact with @KoStard",
+                                        reply_to_message_id=message[
+                                            "message_id"],
                                     )
                                     return
                             available_commands[command][0](bot, group, text,
@@ -265,10 +273,14 @@ def update_bot(bot: Bot, *, timeout=10):
                                 group,
                                 'Sorry dear {}, your role "{}" is not granted to use this command.'
                                 .format(participant, max_priority_role.name),
+                                reply_to_message_id=message["message_id"],
                             )
                     else:
                         bot.send_message(
-                            group, 'Invalid command "{}"'.format(command))
+                            group,
+                            'Invalid command "{}"'.format(command),
+                            reply_to_message_id=message["message_id"],
+                        )
             participant.save()
         bot.offset = update["update_id"] + 1
         bot.save()
@@ -279,7 +291,11 @@ def send_problem(bot: Bot, group: Group, text, message):
     try:
         problem = group.activeSubject.problem_set.get(index=index)
     except Problem.DoesNotExist:
-        bot.send_message(group, 'Invalid problem number "{}".')
+        bot.send_message(
+            group,
+            'Invalid problem number "{}".',
+            reply_to_message_id=message["message_id"],
+        )
     else:
         form_resp = bot.send_message(group, str(problem))
         logging.debug("Sending problem {}".format(problem.index))
@@ -291,7 +307,8 @@ def send_problem(bot: Bot, group: Group, text, message):
                     reply_to_message_id=form_resp[0].get("message_id"),
                     caption="Image of problem N{}.".format(problem.index),
                 )
-                logging.debug("Sending image for problem {}".format(problem.index))
+                logging.debug("Sending image for problem {}".format(
+                    problem.index))
             except Exception as e:
                 print("Can't send image {}".format(problem.img))
         group.activeSubject = problem.subject
@@ -301,7 +318,11 @@ def send_problem(bot: Bot, group: Group, text, message):
 
 def answer_problem(bot, group, text, message):
     if not group.activeProblem and len(text.split()) <= 1:
-        bot.send_message(group, "There is no active problem for this group.")
+        bot.send_message(
+            group,
+            "There is no active problem for this group.",
+            reply_to_message_id=message["message_id"],
+        )
         return
     problem = group.activeProblem
     if len(text.split()) > 1:
@@ -309,7 +330,9 @@ def answer_problem(bot, group, text, message):
         if problem and index > problem.index:
             bot.send_message(
                 group,
-                "You can't send new problem's answer without opening it.")
+                "You can't send new problem's answer without opening it.",
+                reply_to_message_id=message["message_id"],
+            )
             return
         elif not problem or index < problem.index:
             try:
@@ -323,11 +346,14 @@ def answer_problem(bot, group, text, message):
     bot.send_message(group, problem.close(group))
     t_pages = group.telegraphpage_set.all()
     if t_pages:  # Create the page manually with DynamicTelegraphPageCreator
-        t_page = t_pages[len(t_pages)-1] # Using last added page -> negative indexing is not supported
+        t_page = t_pages[
+            len(t_pages) -
+            1]  # Using last added page -> negative indexing is not supported
         t_account = t_page.account
         page_controller = DynamicTelegraphPageCreator(t_account.access_token)
         page_controller.load_and_set_page(t_page.path, return_content=False)
-        page_controller.update_page(content=createGroupLeaderBoardForTelegraph(group))
+        page_controller.update_page(
+            content=createGroupLeaderBoardForTelegraph(group))
     group.activeProblem = None
     group.save()
 
@@ -338,12 +364,17 @@ def start_in_group(bot, group, text, message):
     bot.send_message(
         group,
         "This group is now bound with me, to break the connection, use /stop command.",
+        reply_to_message_id=message["message_id"],
     )
 
 
 def remove_from_group(bot, group, text, message):
     bot.botbinding_set.objects.get(bot=bot).delete()
-    bot.send_message(group, "The connection was successfully stopped.")
+    bot.send_message(
+        group,
+        "The connection was successfully stopped.",
+        reply_to_message_id=message["message_id"],
+    )
 
 
 def add_subject(bot, group, text, message):
@@ -367,8 +398,10 @@ def get_score(bot, group, text, message):
         if specific:
             specific = specific[0]
             bot.send_message(
-                group, "{}'s score is {}".format(
-                    str(participant), specific.score))
+                group,
+                "{}'s score is {}".format(str(participant), specific.score),
+                reply_to_message_id=message["message_id"],
+            )
 
 
 # (function, min_priority_level, needs_binding)
@@ -493,8 +526,10 @@ def createGroupLeaderBoardForTelegraph(group: Group, *, max_limit=0):
     return res
 
 
-def create_and_save_telegraph_page(t_account: TelegraphAccount, title: str,
-                                   content: list, group: Group=None):
+def create_and_save_telegraph_page(t_account: TelegraphAccount,
+                                   title: str,
+                                   content: list,
+                                   group: Group = None):
     d = DynamicTelegraphPageCreator(t_account.access_token)
     p = d.create_page(title, content, return_content=True)
     d.load_and_set_page(p['path'])
