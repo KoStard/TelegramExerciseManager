@@ -36,7 +36,7 @@ def run():
                             right=True,
                             processed=False))))
         td = datetime.now(timezone.utc) - bot.last_updated
-        print("[{}] {} from last update.".format(bot.name, td))
+        print("[{}] {} since last update.".format(bot.name, td))
         if (td.days):
             logging.info("***** UPDATE DATA FOR BOT {} *****".format(bot.name))
             logging.info(
