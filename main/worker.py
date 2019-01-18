@@ -117,7 +117,7 @@ def update_bot(bot: Bot, *, timeout=10):
                 or message["from"].get("username")
                 or message["from"].get("last_name"),
                 bot,
-                message.get("text") or "|UNKNOWN|",
+                message.get("text") or (message.get('new_chat_member') and "New Chat Member") or "|UNKNOWN|",
             ))
             logging.info("{}| {} [{}] -> {}".format(
                 timezone.now(),
@@ -139,9 +139,6 @@ def update_bot(bot: Bot, *, timeout=10):
                 continue
 
             if message.get("new_chat_members"):
-                logging.info(
-                    message
-                )  # Temporary -> to get new chat member message structure
                 for new_chat_member_data in message["new_chat_members"]:
                     if new_chat_member_data[
                             "is_bot"] or Participant.objects.filter(
