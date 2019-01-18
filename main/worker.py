@@ -400,8 +400,10 @@ def get_score(bot, group, text, message):
                 reply_to_message_id=message["message_id"],
             )
 
+def report(bot, group, text, message):
+    pass
 
-# (function, min_priority_level, needs_binding)
+#- (function, min_priority_level, needs_binding)
 available_commands = {
     "send": (send_problem, 6, True),
     "answer": (answer_problem, 6, True),
@@ -411,6 +413,7 @@ available_commands = {
     "select_subject": (select_subject, 9, True),
     "finish_subject": (finish_subject, 9, True),
     "score": (get_score, 0, True),
+    "report": (report, 2, True),
 }
 
 
