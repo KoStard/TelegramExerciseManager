@@ -16,8 +16,15 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE",
 django.setup()
 
 res = """from django.contrib import admin\n"""
-model_admin_template = """class {ModelName}Admin(admin.ModelAdmin):\n    pass\n"""
-registration_template = """admin.site.register({ModelName}, {ModelName}Admin)\n"""
+model_admin_template_with_fields =\
+"""@admin.register({ModelName})
+class {ModelName}Admin(admin.ModelAdmin):
+    list_display=({fields})\n\n\n"""
+model_admin_template_without_fields =\
+"""@admin.register({ModelName})
+class {ModelName}Admin(admin.ModelAdmin):
+    pass\n\n\n"""
+# registration_template = """admin.site.register({ModelName}, {ModelName}Admin)\n"""
 
 for arg in sys.argv[1:]:
     if arg[0] == '*':
@@ -27,6 +34,8 @@ for arg in sys.argv[1:]:
     res += t + '\n'
     exec(t)
 
+res += '\n'
+
 av = {**locals()}
 models = []
 for local in av:
@@ -34,9 +43,15 @@ for local in av:
         models.append((local, av[local]))
 
 for model_data in models:
-    res += model_admin_template.format(ModelName=model_data[0])
+    res += model_admin_template_with_fields.format(
+        ModelName=model_data[0],
+        fields=', '.join(
+            '"{}"'.format(field if isinstance(field, str) else field.name)
+            for field in (model_data[1].get_list_display(
+            ) if hasattr(model_data[1], 'get_list_display') else model_data[1].
+                          _meta.fields[1:])) + ', ')
 
-for model_data in models:
-    res += registration_template.format(ModelName=model_data[0])
+# for model_data in models:
+#     res += registration_template.format(ModelName=model_data[0])
 
 print(res)

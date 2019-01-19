@@ -2,99 +2,204 @@ from django.contrib import admin
 from main.models import *
 
 
+@admin.register(Discipline)
 class DisciplineAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "name",
+        "value",
+    )
 
 
+@admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "name",
+        "value",
+        "discipline",
+    )
 
 
+@admin.register(Problem)
 class ProblemAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "index",
+        "formulation",
+        "right_variant",
+        "subject",
+        "chapter",
+        "is_special",
+        "img",
+        "value",
+    )
 
 
+@admin.register(GroupType)
 class GroupTypeAdmin(admin.ModelAdmin):
-    pass
+    list_display = ("name", )
 
 
+@admin.register(Group)
 class GroupAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "telegram_id",
+        "username",
+        "title",
+        "type",
+    )
 
 
+@admin.register(ParticipantGroup)
 class ParticipantGroupAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "telegram_id",
+        "username",
+        "title",
+        "type",
+        "group_ptr",
+        "active_problem",
+        "active_subject_group_binding",
+    )
+
+    def active_problem(self, obj):
+        return obj.activeProblem.index if obj.activeProblem else None
+
+    def active_subject_group_binding(self, obj):
+        return obj.activeSubjectGroupBinding
 
 
+@admin.register(AdministratorPage)
 class AdministratorPageAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "telegram_id",
+        "username",
+        "title",
+        "type",
+        "group_ptr",
+        "participant_group",
+    )
 
 
+@admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "username",
+        "first_name",
+        "last_name",
+    )
 
 
+@admin.register(Bot)
 class BotAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "username",
+        "first_name",
+        "last_name",
+        "user_ptr",
+        "token",
+        "offset",
+        "last_updated",
+    )
 
 
+@admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "username",
+        "first_name",
+        "last_name",
+        "user_ptr",
+        "sum_score",
+    )
 
 
+@admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "name",
+        "value",
+        "priority_level",
+        "from_stardard_kit",
+    )
 
 
+@admin.register(ScoreThreshold)
 class ScoreThresholdAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "role",
+        "range_min",
+        "range_max",
+    )
 
 
+@admin.register(GroupSpecificParticipantData)
 class GroupSpecificParticipantDataAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "participant",
+        "participant_group",
+        "score",
+        "joined",
+    )
 
 
+@admin.register(ParticipantGroupBinding)
 class ParticipantGroupBindingAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "groupspecificparticipantdata",
+        "role",
+    )
 
 
+@admin.register(BotBinding)
 class BotBindingAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "bot",
+        "participant_group",
+    )
 
 
+@admin.register(Answer)
 class AnswerAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "get_problem_index",
+        "get_answer",
+        "right",
+        "processed",
+        "group_specific_participant_data",
+        "date",
+    )
+
+    def get_problem_index(self, obj):
+        return obj.problem.index
+
+    def get_answer(self, obj):
+        return obj.answer.upper()
 
 
+@admin.register(SubjectGroupBinding)
 class SubjectGroupBindingAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "subject",
+        "participant_group",
+        "last_problem_index",
+    )
+
+    def last_problem_index(self, obj):
+        return obj.last_problem.index if obj.last_problem else None
 
 
+@admin.register(TelegraphAccount)
 class TelegraphAccountAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        "access_token",
+        "auth_url",
+    )
 
 
+@admin.register(TelegraphPage)
 class TelegraphPageAdmin(admin.ModelAdmin):
-    pass
-
-
-admin.site.register(Discipline, DisciplineAdmin)
-admin.site.register(Subject, SubjectAdmin)
-admin.site.register(Problem, ProblemAdmin)
-admin.site.register(GroupType, GroupTypeAdmin)
-admin.site.register(Group, GroupAdmin)
-admin.site.register(ParticipantGroup, ParticipantGroupAdmin)
-admin.site.register(AdministratorPage, AdministratorPageAdmin)
-admin.site.register(User, UserAdmin)
-admin.site.register(Bot, BotAdmin)
-admin.site.register(Participant, ParticipantAdmin)
-admin.site.register(Role, RoleAdmin)
-admin.site.register(ScoreThreshold, ScoreThresholdAdmin)
-admin.site.register(GroupSpecificParticipantData,
-                    GroupSpecificParticipantDataAdmin)
-admin.site.register(ParticipantGroupBinding, ParticipantGroupBindingAdmin)
-admin.site.register(BotBinding, BotBindingAdmin)
-admin.site.register(Answer, AnswerAdmin)
-admin.site.register(SubjectGroupBinding, SubjectGroupBindingAdmin)
-admin.site.register(TelegraphAccount, TelegraphAccountAdmin)
-admin.site.register(TelegraphPage, TelegraphPageAdmin)
+    list_display = (
+        "path",
+        "url",
+        "account",
+        "participant_group",
+    )
