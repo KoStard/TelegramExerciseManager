@@ -27,6 +27,9 @@ class Subject(models.Model):
     value = models.CharField(max_length=100)
     discipline = models.ForeignKey(Discipline, on_delete=models.CASCADE)
 
+    def __len__(self):
+        return self.problem_set.count()
+
     def __str__(self):
         return '{}->{}'.format(self.discipline, self.name)
 
@@ -104,6 +107,18 @@ class Problem(models.Model):
             res += '\nNo one solved the problem. #Hardcore'
         res += '\n#Problem_Leaderboard'
         return res
+
+    @property
+    def next(self):
+        if self.index < len(self.subject):
+            n = self.subject.problem_set.filter(index=self.index + 1)
+            if n: return n[0]
+
+    @property
+    def previous(self):
+        if self.index > 1:
+            n = self.subject.problem_set.filter(index=self.index - 1)
+            if n: return n[0]
 
     @staticmethod
     def get_list_display():
