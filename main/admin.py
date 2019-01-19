@@ -22,6 +22,14 @@ class GroupAdmin(admin.ModelAdmin):
     pass
 
 
+class ParticipantGroupAdmin(admin.ModelAdmin):
+    pass
+
+
+class AdministratorPageAdmin(admin.ModelAdmin):
+    pass
+
+
 class UserAdmin(admin.ModelAdmin):
     pass
 
@@ -34,11 +42,15 @@ class ParticipantAdmin(admin.ModelAdmin):
     pass
 
 
-class GroupSpecificParticipantDataAdmin(admin.ModelAdmin):
+class RoleAdmin(admin.ModelAdmin):
     pass
 
 
-class RoleAdmin(admin.ModelAdmin):
+class ScoreThresholdAdmin(admin.ModelAdmin):
+    pass
+
+
+class GroupSpecificParticipantDataAdmin(admin.ModelAdmin):
     pass
 
 
@@ -58,10 +70,6 @@ class SubjectGroupBindingAdmin(admin.ModelAdmin):
     pass
 
 
-class ScoreThresholdAdmin(admin.ModelAdmin):
-    pass
-
-
 class TelegraphAccountAdmin(admin.ModelAdmin):
     pass
 
@@ -75,16 +83,18 @@ admin.site.register(Subject, SubjectAdmin)
 admin.site.register(Problem, ProblemAdmin)
 admin.site.register(GroupType, GroupTypeAdmin)
 admin.site.register(Group, GroupAdmin)
+admin.site.register(ParticipantGroup, ParticipantGroupAdmin)
+admin.site.register(AdministratorPage, AdministratorPageAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(Bot, BotAdmin)
 admin.site.register(Participant, ParticipantAdmin)
+admin.site.register(Role, RoleAdmin)
+admin.site.register(ScoreThreshold, ScoreThresholdAdmin)
 admin.site.register(GroupSpecificParticipantData,
                     GroupSpecificParticipantDataAdmin)
-admin.site.register(Role, RoleAdmin)
 admin.site.register(ParticipantGroupBinding, ParticipantGroupBindingAdmin)
 admin.site.register(BotBinding, BotBindingAdmin)
 admin.site.register(Answer, AnswerAdmin)
 admin.site.register(SubjectGroupBinding, SubjectGroupBindingAdmin)
-admin.site.register(ScoreThreshold, ScoreThresholdAdmin)
 admin.site.register(TelegraphAccount, TelegraphAccountAdmin)
 admin.site.register(TelegraphPage, TelegraphPageAdmin)

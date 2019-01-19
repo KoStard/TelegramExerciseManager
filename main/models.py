@@ -1,8 +1,5 @@
 from django.db import models
-from main.universals import (
-    get_response,
-    configure_logging,
-)
+from main.universals import (get_response, configure_logging, safe_getter)
 import io
 import re
 import logging
@@ -67,21 +64,23 @@ class Problem(models.Model):
         return """\\<b>The right choice is {}\\</b>\n{}\n#Answer to {}\n""".format(
             self.right_variant, self.answer_formulation, self.index)
 
-    def close(self, group):
+    def close(self, participant_group):
         answers = Answer.objects.filter(
             problem=self,
-            group_specific_participant_data__group=group,
+            group_specific_participant_data__participant_group=
+            participant_group,
             right=True,
             processed=False)
         for answer in answers:
             answer.process()
             answer.group_specific_participant_data.recalculate_roles()
-        return self.get_leader_board(group, answers=answers)
+        return self.get_leader_board(participant_group, answers=answers)
 
-    def get_leader_board(self, group, answers=None):
+    def get_leader_board(self, participant_group, answers=None):
         answers = answers or Answer.objects.filter(
             problem=self,
-            group_specific_participant_data__group=group,
+            group_specific_participant_data__participant_group=
+            participant_group,
             right=True,
             processed=False)
         res = "Right answers:"
@@ -132,10 +131,6 @@ class Group(models.Model):
     username = models.CharField(max_length=100, blank=True, null=True)
     title = models.CharField(max_length=150)
     type = models.ForeignKey(GroupType, on_delete=models.CASCADE)
-    activeProblem = models.ForeignKey(
-        Problem, on_delete=models.CASCADE, blank=True, null=True)
-    activeSubject = models.ForeignKey(
-        Subject, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return '[{}] {}'.format(self.type.name, self.title or self.username)
@@ -143,6 +138,35 @@ class Group(models.Model):
     class Meta:
         verbose_name = 'Group'
         db_table = 'db_group'
+
+
+class ParticipantGroup(Group):
+    """ Participant Group model """
+    activeProblem = models.ForeignKey(
+        Problem, on_delete=models.CASCADE, blank=True, null=True)
+    activeSubjectGroupBinding = models.ForeignKey(
+        'SubjectGroupBinding', on_delete=models.CASCADE, blank=True, null=True)
+
+    def get_administrator_page(self):
+        return safe_getter(self, 'administratorpage')
+
+    class Meta:
+        verbose_name = 'Participant Group'
+        db_table = 'db_participant_group'
+
+
+class AdministratorPage(Group):
+    """ Administrator Page model """
+
+    participant_group = models.OneToOneField(
+        ParticipantGroup, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return 'ADMINISTRATOR PAGE FOR {}'.format(self.participant_group)
+
+    class Meta:
+        verbose_name = 'Administrator Page'
+        db_table = 'db_administrator_page'
 
 
 class User(models.Model):
@@ -190,23 +214,24 @@ class Bot(User):
             self.last_name = resp.get('last_name')
             self.save()
 
-    def get_group_member(self, group, participant):
-        if isinstance(group, Group):
-            group = group.telegram_id
+    def get_group_member(self, participant_group, participant):
+        if isinstance(participant_group, Group):
+            participant_group = participant_group.telegram_id
         if isinstance(participant, Participant):
             participant = participant.id
         url = self.base_url + 'getChatMember'
-        payload = {'chat_id': group, 'user_id': participant}
+        payload = {'chat_id': participant_group, 'user_id': participant}
         return get_response(url, payload=payload)
 
     def send_message(self,
-                     group: 'text/id or group',
+                     participant_group: 'text/id or group',
                      text,
                      *,
                      parse_mode='HTML',
                      reply_to_message_id=None):
-        if not (isinstance(group, str) or isinstance(group, int)):
-            group = group.telegram_id
+        if not (isinstance(participant_group, str)
+                or isinstance(participant_group, int)):
+            participant_group = participant_group.telegram_id
 
         if parse_mode == 'Markdown':
             text = text.replace('_', '\_')
@@ -225,7 +250,7 @@ class Bot(User):
             url = self.base_url + 'sendMessage'
             payload = {
                 'chat_id':
-                group,
+                participant_group,
                 'text':
                 message.replace('<', '&lt;').replace('\\&lt;', '<'),
                 'reply_to_message_id':
@@ -239,16 +264,17 @@ class Bot(User):
         return resp
 
     def send_image(self,
-                   group: 'text/id or group',
+                   participant_group: 'text/id or group',
                    image_file: io.BufferedReader,
                    *,
                    caption='',
                    reply_to_message_id=None):
-        if not (isinstance(group, str) or isinstance(group, int)):
-            group = group.telegram_id
+        if not (isinstance(participant_group, str)
+                or isinstance(participant_group, int)):
+            participant_group = participant_group.telegram_id
         url = self.base_url + 'sendPhoto'
         payload = {
-            'chat_id': group,
+            'chat_id': participant_group,
             'caption': caption,
             'reply_to_message_id': reply_to_message_id,
         }
@@ -257,11 +283,13 @@ class Bot(User):
         logging.info(resp)
         return resp
 
-    def delete_message(self, group: str or Group, message_id: int or str):
-        if not (isinstance(group, str) or isinstance(group, int)):
-            group = group.telegram_id
+    def delete_message(self, participant_group: str or Group, message_id: int
+                       or str):
+        if not (isinstance(participant_group, str)
+                or isinstance(participant_group, int)):
+            participant_group = participant_group.telegram_id
         url = self.base_url + 'deleteMessage'
-        payload = {'chat_id': group, 'message_id': message_id}
+        payload = {'chat_id': participant_group, 'message_id': message_id}
         resp = get_response(url, payload=payload)
         logging.info(resp)
         return resp
@@ -317,7 +345,8 @@ class ScoreThreshold(models.Model):
 class GroupSpecificParticipantData(models.Model):
     """ Group-specific participant data """
     participant = models.ForeignKey(Participant, on_delete=models.CASCADE)
-    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    participant_group = models.ForeignKey(
+        ParticipantGroup, on_delete=models.CASCADE)
     score = models.IntegerField(default=0)
     joined = models.DateTimeField(blank=True, null=True)
 
@@ -403,7 +432,8 @@ class GroupSpecificParticipantData(models.Model):
         return res
 
     def __str__(self):
-        return '{}-{{{}}}->{}'.format(self.participant, self.score, self.group)
+        return '{}-{{{}}}->{}'.format(self.participant, self.score,
+                                      self.participant_group)
 
     class Meta:
         verbose_name = 'Group Specific Participant Data'
@@ -420,7 +450,7 @@ class ParticipantGroupBinding(models.Model):
     def __str__(self):
         return '{}-{{{}}}->{}'.format(
             self.groupspecificparticipantdata.participant, self.role.name,
-            self.groupspecificparticipantdata.group)
+            self.groupspecificparticipantdata.participant_group)
 
     class Meta:
         verbose_name = 'Participant-Group Binding'
@@ -430,10 +460,11 @@ class ParticipantGroupBinding(models.Model):
 class BotBinding(models.Model):
     """ Binding of a bot """
     bot = models.ForeignKey(Bot, on_delete=models.CASCADE)
-    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    participant_group = models.ForeignKey(
+        ParticipantGroup, on_delete=models.CASCADE)
 
     def __str__(self):
-        return '{}->{}'.format(self.bot, self.group)
+        return '{}->{}'.format(self.bot, self.participant_group)
 
     class Meta:
         verbose_name = 'Bot Binding'
@@ -460,6 +491,11 @@ class Answer(models.Model):
             self.processed = True
             self.save()
 
+    def __str__(self):
+        return '[{}] {} -> Problem {}'.format(
+            self.answer.upper(), self.group_specific_participant_data,
+            self.problem.index)
+
     class Meta:
         verbose_name = 'Answer'
         db_table = 'db_answer'
@@ -468,11 +504,12 @@ class Answer(models.Model):
 class SubjectGroupBinding(models.Model):
     """ Subject-Group binding """
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    participant_group = models.ForeignKey(
+        ParticipantGroup, on_delete=models.CASCADE)
     last_problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
 
     def __str__(self):
-        return '{}->{}'.format(self.subject, self.group)
+        return '{}->{}'.format(self.subject, self.participant_group)
 
     class Meta:
         verbose_name = 'Subject-Group Binding'
@@ -497,12 +534,12 @@ class TelegraphPage(models.Model):
     path = models.CharField(max_length=150)
     url = models.URLField()
     account = models.ForeignKey(TelegraphAccount, on_delete=models.CASCADE)
-    group = models.ForeignKey(
-        Group, on_delete=models.CASCADE, blank=True,
+    participant_group = models.ForeignKey(
+        ParticipantGroup, on_delete=models.CASCADE, blank=True,
         null=True)  # Maybe we'll create a page without group
 
     def __str__(self):
-        return '{} for {}'.format(self.path, self.group)
+        return '{} for {}'.format(self.path, self.participant_group)
 
     class Meta:
         verbose_name = 'Telegraph Page'

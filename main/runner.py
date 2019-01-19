@@ -13,10 +13,6 @@ django.setup()
 from django.utils import timezone
 from main.worker import *
 
-group = Group.objects.get(id=1)
-bot = Bot.objects.all()[0]
-problem = Problem.objects.get(index=180)
-
 bots = Bot.objects.all()
 running = True
 
@@ -25,14 +21,14 @@ def run():
     print("Ready.")
     for bot in bots:
         for binding in bot.botbinding_set.all():
-            if binding.group.activeProblem:
+            if binding.participant_group.activeProblem:
                 print('{} - {} - {} -> {} right answers'.format(
-                    bot.name, bot.last_updated, binding.group,
+                    bot.name, bot.last_updated, binding.participant_group,
                     len(
                         Answer.objects.filter(
-                            problem=binding.group.activeProblem,
-                            group_specific_participant_data__group=binding.
-                            group,
+                            problem=binding.participant_group.activeProblem,
+                            group_specific_participant_data__participant_group=binding.
+                            participant_group,
                             right=True,
                             processed=False))))
         td = datetime.now(timezone.utc) - bot.last_updated
