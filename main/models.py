@@ -65,16 +65,18 @@ class Problem(models.Model):
             self.right_variant, self.answer_formulation, self.index)
 
     def close(self, participant_group):
-        answers = Answer.objects.filter(
-            problem=self,
+        answers = self.answer_set.filter(
             group_specific_participant_data__participant_group=
             participant_group,
-            right=True,
-            processed=False)
+            processed=False
+        )  # Getting both right and wrong answers -> have to be processed
         for answer in answers:
             answer.process()
             answer.group_specific_participant_data.recalculate_roles()
-        return self.get_leader_board(participant_group, answers=answers)
+        return self.get_leader_board(
+            participant_group,
+            answers=[answer for answer in answers if answer.right
+                     ])  # Including in the leaderboard only right answers
 
     def get_leader_board(self, participant_group, answers=None):
         answers = answers or Answer.objects.filter(
@@ -507,11 +509,12 @@ class Answer(models.Model):
     date = models.DateTimeField(blank=True, null=True)
 
     def process(self):
-        if self.right and not self.processed:
-            self.group_specific_participant_data.score += self.problem.value
-            self.group_specific_participant_data.save()
-            self.group_specific_participant_data.participant.sum_score += self.problem.value
-            self.group_specific_participant_data.participant.save()
+        if not self.processed:
+            if self.right:
+                self.group_specific_participant_data.score += self.problem.value
+                self.group_specific_participant_data.save()
+                self.group_specific_participant_data.participant.sum_score += self.problem.value
+                self.group_specific_participant_data.participant.save()
             self.processed = True
             self.save()
 
