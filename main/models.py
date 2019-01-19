@@ -103,6 +103,19 @@ class Problem(models.Model):
         res += '\n#Problem_Leaderboard'
         return res
 
+    @staticmethod
+    def get_list_display():
+        return (
+            'index',
+            'formulation',
+            'right_variant',
+            'subject',
+            'chapter',
+            'is_special',
+            'img',
+            'value',
+        )
+
     class Meta:
         verbose_name = 'Problem'
         db_table = 'db_problem'
