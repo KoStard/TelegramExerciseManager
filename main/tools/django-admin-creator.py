@@ -35,6 +35,9 @@ getter_template = """\
 for arg in sys.argv[1:]:
     if arg[0] == '*':
         t = 'from {} import *'.format(arg[1:])
+    elif '.' in arg:
+        t = 'from {} import {}'.format('.'.join(arg.split('.')[:-1]),
+                                       arg.split('.')[-1])
     else:
         t = 'import {}'.format(arg)
     res += t + '\n'
