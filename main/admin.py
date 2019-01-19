@@ -77,7 +77,6 @@ class AdministratorPageAdmin(admin.ModelAdmin):
         "username",
         "title",
         "type",
-        "group_ptr",
         "participant_group",
     )
 
@@ -97,7 +96,6 @@ class BotAdmin(admin.ModelAdmin):
         "username",
         "first_name",
         "last_name",
-        "user_ptr",
         "token",
         "offset",
         "last_updated",
@@ -110,9 +108,13 @@ class ParticipantAdmin(admin.ModelAdmin):
         "username",
         "first_name",
         "last_name",
-        "user_ptr",
         "sum_score",
     )
+
+
+@admin.register(SuperAdmin)
+class SuperAdminAdmin(admin.ModelAdmin):
+    list_display = ("user", )
 
 
 @admin.register(Role)
@@ -212,8 +214,3 @@ class TelegraphPageAdmin(admin.ModelAdmin):
         "account",
         "participant_group",
     )
-
-
-@admin.register(SuperAdmin)
-class SuperAdminAdmin(admin.ModelAdmin):
-    list_display = ("user", )

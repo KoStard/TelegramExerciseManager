@@ -56,7 +56,8 @@ for model_data in models:
     getters = ''
     for field in (model_data[1].get_list_display() if hasattr(
             model_data[1], 'get_list_display') else
-                  model_data[1]._meta.fields[1:]):
+                  (field for field in model_data[1]._meta.fields[1:]
+                   if '_ptr' not in field.name)):
         if isinstance(field, django.db.models.Field):
             field = field.name
         elif not isinstance(field, str):
