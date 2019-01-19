@@ -28,7 +28,8 @@ class {ModelName}Admin(admin.ModelAdmin):
     pass\n\n"""
 getter_template = """\
     def {GetterName}(current, self):
-        return {Getter}\n\n"""
+        return {Getter}
+    {GetterName}.admin_order_field = "{GetterOrdering}"\n\n"""
 # registration_template = """admin.site.register({ModelName}, {ModelName}Admin)\n"""
 
 for arg in sys.argv[1:]:
@@ -57,7 +58,9 @@ for model_data in models:
             field = field.name
         elif not isinstance(field, str):
             getters += getter_template.format(
-                GetterName=field[0], Getter=field[1])
+                GetterName=field[0],
+                Getter=field[1],
+                GetterOrdering='__'.join(field[1].split('.')[1:]))
             field = field[0]
         fields += '\n        "{}", '.format(field)
 

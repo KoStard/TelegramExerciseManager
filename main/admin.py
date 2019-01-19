@@ -62,8 +62,12 @@ class ParticipantGroupAdmin(admin.ModelAdmin):
     def active_problem(current, self):
         return self.activeProblem.index
 
+    active_problem.admin_order_field = "activeProblem__index"
+
     def active_subject_group_binding(current, self):
         return self.activeSubjectGroupBinding
+
+    active_subject_group_binding.admin_order_field = "activeSubjectGroupBinding"
 
 
 @admin.register(AdministratorPage)
@@ -170,8 +174,12 @@ class AnswerAdmin(admin.ModelAdmin):
     def Problem(current, self):
         return self.problem.index
 
+    Problem.admin_order_field = "problem__index"
+
     def Answer(current, self):
         return self.answer.upper()
+
+    Answer.admin_order_field = "answer__upper()"
 
 
 @admin.register(SubjectGroupBinding)
@@ -184,6 +192,8 @@ class SubjectGroupBindingAdmin(admin.ModelAdmin):
 
     def Last_problem(current, self):
         return self.last_problem.index
+
+    Last_problem.admin_order_field = "last_problem__index"
 
 
 @admin.register(TelegraphAccount)
