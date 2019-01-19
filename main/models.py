@@ -163,6 +163,17 @@ class ParticipantGroup(Group):
     def get_administrator_page(self):
         return safe_getter(self, 'administratorpage')
 
+    @staticmethod
+    def get_list_display():
+        return (
+            "telegram_id",
+            "username",
+            "title",
+            "type",
+            ("active_problem", "self.activeProblem.index"),
+            ("active_subject_group_binding", "self.activeSubjectGroupBinding"),
+        )
+
     class Meta:
         verbose_name = 'Participant Group'
         db_table = 'db_participant_group'
@@ -342,9 +353,9 @@ class Role(models.Model):
 
 class ScoreThreshold(models.Model):
     """ Score threshold """
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
     range_min = models.IntegerField()
     range_max = models.IntegerField()
-    role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
     def __str__(self):
         return '{} [{}; {}]'.format(self.role.name, self.range_min,
@@ -509,6 +520,17 @@ class Answer(models.Model):
             self.answer.upper(), self.group_specific_participant_data,
             self.problem.index)
 
+    @staticmethod
+    def get_list_display():
+        return (
+            ("Problem", "self.problem.index"),
+            ("Answer", "self.answer.upper()"),
+            "right",
+            "processed",
+            "group_specific_participant_data",
+            "date",
+        )
+
     class Meta:
         verbose_name = 'Answer'
         db_table = 'db_answer'
@@ -523,6 +545,13 @@ class SubjectGroupBinding(models.Model):
 
     def __str__(self):
         return '{}->{}'.format(self.subject, self.participant_group)
+
+    def get_list_display():
+        return (
+            "subject",
+            "participant_group",
+            ("Last_problem", "self.last_problem.index"),
+        )
 
     class Meta:
         verbose_name = 'Subject-Group Binding'

@@ -19,11 +19,16 @@ res = """from django.contrib import admin\n"""
 model_admin_template_with_fields =\
 """@admin.register({ModelName})
 class {ModelName}Admin(admin.ModelAdmin):
-    list_display=({fields})\n\n\n"""
-model_admin_template_without_fields =\
-"""@admin.register({ModelName})
+    list_display=({fields}
+    )\n
+{getters}\n\n"""
+model_admin_template_without_fields = """\
+@admin.register({ModelName})
 class {ModelName}Admin(admin.ModelAdmin):
-    pass\n\n\n"""
+    pass\n\n"""
+getter_template = """\
+    def {GetterName}(current, self):
+        return {Getter}\n\n"""
 # registration_template = """admin.site.register({ModelName}, {ModelName}Admin)\n"""
 
 for arg in sys.argv[1:]:
@@ -43,13 +48,21 @@ for local in av:
         models.append((local, av[local]))
 
 for model_data in models:
+    fields = ''
+    getters = ''
+    for field in (model_data[1].get_list_display() if hasattr(
+            model_data[1], 'get_list_display') else
+                  model_data[1]._meta.fields[1:]):
+        if isinstance(field, django.db.models.Field):
+            field = field.name
+        elif not isinstance(field, str):
+            getters += getter_template.format(
+                GetterName=field[0], Getter=field[1])
+            field = field[0]
+        fields += '\n        "{}", '.format(field)
+
     res += model_admin_template_with_fields.format(
-        ModelName=model_data[0],
-        fields=', '.join(
-            '"{}"'.format(field if isinstance(field, str) else field.name)
-            for field in (model_data[1].get_list_display(
-            ) if hasattr(model_data[1], 'get_list_display') else model_data[1].
-                          _meta.fields[1:])) + ', ')
+        ModelName=model_data[0], fields=fields, getters=getters)
 
 # for model_data in models:
 #     res += registration_template.format(ModelName=model_data[0])

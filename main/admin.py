@@ -55,16 +55,15 @@ class ParticipantGroupAdmin(admin.ModelAdmin):
         "username",
         "title",
         "type",
-        "group_ptr",
         "active_problem",
         "active_subject_group_binding",
     )
 
-    def active_problem(self, obj):
-        return obj.activeProblem.index if obj.activeProblem else None
+    def active_problem(current, self):
+        return self.activeProblem.index
 
-    def active_subject_group_binding(self, obj):
-        return obj.activeSubjectGroupBinding
+    def active_subject_group_binding(current, self):
+        return self.activeSubjectGroupBinding
 
 
 @admin.register(AdministratorPage)
@@ -160,19 +159,19 @@ class BotBindingAdmin(admin.ModelAdmin):
 @admin.register(Answer)
 class AnswerAdmin(admin.ModelAdmin):
     list_display = (
-        "get_problem_index",
-        "get_answer",
+        "Problem",
+        "Answer",
         "right",
         "processed",
         "group_specific_participant_data",
         "date",
     )
 
-    def get_problem_index(self, obj):
-        return obj.problem.index
+    def Problem(current, self):
+        return self.problem.index
 
-    def get_answer(self, obj):
-        return obj.answer.upper()
+    def Answer(current, self):
+        return self.answer.upper()
 
 
 @admin.register(SubjectGroupBinding)
@@ -180,11 +179,11 @@ class SubjectGroupBindingAdmin(admin.ModelAdmin):
     list_display = (
         "subject",
         "participant_group",
-        "last_problem_index",
+        "Last_problem",
     )
 
-    def last_problem_index(self, obj):
-        return obj.last_problem.index if obj.last_problem else None
+    def Last_problem(current, self):
+        return self.last_problem.index
 
 
 @admin.register(TelegraphAccount)
