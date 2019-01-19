@@ -519,7 +519,8 @@ class Answer(models.Model):
             self.save()
 
     def __str__(self):
-        return '[{}] {} -> Problem {}'.format(
+        return '{}[{}] {} -> Problem {}'.format(
+            ("+" if self.right else "-") if self.processed else "*",
             self.answer.upper(), self.group_specific_participant_data,
             self.problem.index)
 
