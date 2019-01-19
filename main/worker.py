@@ -343,7 +343,7 @@ def update_bot(bot: Bot, *, timeout=10):
                                 .format(participant, max_priority_role.name),
                                 reply_to_message_id=message["message_id"],
                             )
-                    else:
+                    elif command:
                         bot.send_message(
                             participant_group,
                             'Invalid command "{}"'.format(command),
