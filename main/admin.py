@@ -212,3 +212,8 @@ class TelegraphPageAdmin(admin.ModelAdmin):
         "account",
         "participant_group",
     )
+
+
+@admin.register(SuperAdmin)
+class SuperAdminAdmin(admin.ModelAdmin):
+    list_display = ("user", )

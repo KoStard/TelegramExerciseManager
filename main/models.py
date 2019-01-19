@@ -200,7 +200,7 @@ class AdministratorPage(Group):
     """ Administrator Page model """
 
     participant_group = models.OneToOneField(
-        ParticipantGroup, on_delete=models.CASCADE)
+        ParticipantGroup, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return 'ADMINISTRATOR PAGE FOR {}'.format(self.participant_group)
@@ -265,14 +265,14 @@ class Bot(User):
         return get_response(url, payload=payload)
 
     def send_message(self,
-                     participant_group: 'text/id or group',
+                     group: 'text/id or group',
                      text,
                      *,
                      parse_mode='HTML',
                      reply_to_message_id=None):
-        if not (isinstance(participant_group, str)
-                or isinstance(participant_group, int)):
-            participant_group = participant_group.telegram_id
+        if not (isinstance(group, str)
+                or isinstance(group, int)):
+            group = group.telegram_id
 
         if parse_mode == 'Markdown':
             text = text.replace('_', '\_')
@@ -291,7 +291,7 @@ class Bot(User):
             url = self.base_url + 'sendMessage'
             payload = {
                 'chat_id':
-                participant_group,
+                group,
                 'text':
                 message.replace('<', '&lt;').replace('\\&lt;', '<'),
                 'reply_to_message_id':
@@ -351,6 +351,19 @@ class Participant(User):
     class Meta:
         verbose_name = 'Participant'
         db_table = 'db_participant'
+
+
+class SuperAdmin(models.Model):
+    """ Super-Admin model """
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return '{{Super-Admin}} {}'.format(self.user)
+
+    class Meta:
+        verbose_name = 'Super Admin'
+        db_table = 'db_super_admin'
 
 
 class Role(models.Model):

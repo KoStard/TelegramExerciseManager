@@ -140,7 +140,7 @@ def check_message_bindings(bot: Bot, participant_group: ParticipantGroup,
     return resp
 
 
-def update_bot(bot: Bot, *, timeout=10):
+def update_bot(bot: Bot, *, timeout=60):
     """ Will get bot updates """
     url = bot.base_url + "getUpdates"
     payload = {'offset': bot.offset or "", 'timeout': timeout}
@@ -150,21 +150,23 @@ def update_bot(bot: Bot, *, timeout=10):
     for update in resp:
         message = update.get("message")
         if message and not message["from"]["is_bot"]:
-            print("{} [{}] -> {}".format(
+            print("{} [{}->{}] -> {}".format(
                 message["from"].get("first_name")
                 or message["from"].get("username")
                 or message["from"].get("last_name"),
+                message["chat"]["title"],
                 bot,
                 message.get("text")
                 or (message.get('new_chat_member') and "New Chat Member")
                 or (', '.join(key for key in available_message_bindings.keys()
                               if message.get(key))) or "|UNKNOWN|",
             ))
-            logging.info("{}| {} [{}] -> {}".format(
+            logging.info("{}| {} [{}->{}] -> {}".format(
                 timezone.now(),
                 message["from"].get("first_name")
                 or message["from"].get("username")
                 or message["from"].get("last_name"),
+                message["chat"]["title"],
                 bot,
                 message.get("text") or message,
             ))
@@ -172,10 +174,20 @@ def update_bot(bot: Bot, *, timeout=10):
                 participant_group = ParticipantGroup.objects.get(
                     telegram_id=message["chat"]["id"])
             except ParticipantGroup.DoesNotExist:
-                bot.send_message(
-                    message["chat"]["id"],
-                    "Hi, if you want to use this bot in your groups too, then contact with @KoStard",
-                )
+                participant = Participant.objects.get(pk=message["from"]["id"])
+                if participant and safe_getter(participant, 'superadmin'):
+                    if message["text"][0] == '/':
+                        command = message["text"][1:].split(" ")[0].split(
+                            '@')[0]
+                        if command in available_commands and not available_commands[
+                                command][2] and available_commands[command][
+                                    1] == 'superadmin':
+                            available_commands[command][0](bot, message)
+                else:
+                    bot.send_message(
+                        message["chat"]["id"],
+                        "Hi, if you want to use this bot in your groups too, then contact with @KoStard",
+                    )
                 bot.offset = update["update_id"] + 1
                 bot.save()
                 continue
@@ -445,7 +457,8 @@ def answer_problem(bot, participant_group, text, message):
     participant_group.save()
 
 
-def start_in_participant_group(bot, participant_group, text, message):
+def start_in_participant_group(bot, participant_group, text,
+                               message):  # Won't work in new groups
     binding = BotBinding(bot=bot, participant_group=participant_group)
     binding.save()
     bot.send_message(
@@ -495,17 +508,38 @@ def report(bot, participant_group, text, message):
     pass
 
 
+def start_in_administrator_page(bot: Bot, message):
+    administrator_page = AdministratorPage(
+        telegram_id=message["chat"]["id"],
+        username=message["chat"].get("username"),
+        title=message["chat"].get("title"),
+        type=(GroupType.objects.filter(name=message["chat"].get("type"))
+              or [None])[0],
+    )
+    administrator_page.save()
+    bot.send_message(
+        administrator_page,
+        "Congratulations, this group is now registered as an administrator page.",
+        reply_to_message_id=message['message_id'])
+
+
+def stop_in_administrator_page(bot, participant_group, text, message):
+    pass
+
+
 #- (function, min_priority_level, needs_binding)
 available_commands = {
     "send": (send_problem, 6, True),
     "answer": (answer_problem, 6, True),
-    "start": (start_in_participant_group, 8, False),
-    "stop": (remove_from_participant_group, 8, True),
+    "start_participant": (start_in_participant_group, 8, False),
+    "stop_participant": (remove_from_participant_group, 8, True),
     "add_subject": (add_subject, 9, True),
     "select_subject": (select_subject, 9, True),
     "finish_subject": (finish_subject, 9, True),
     "score": (get_score, 0, True),
     "report": (report, 2, True),
+    "start_admin": (start_in_administrator_page, 'superadmin', False),
+    "stop_admin": (stop_in_administrator_page, 'superadmin', True),
 }
 
 
