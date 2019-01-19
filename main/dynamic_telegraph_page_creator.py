@@ -10,7 +10,8 @@ class classproperty(property):
 
 
 class DynamicTelegraphPageCreator:
-    """Create telegraph pages and update them dynamically
+    """
+    Create telegraph pages and update them dynamically
     so that you'll get up-to-date content
     - The maximum size of the page is 64KB!
     - You can edit even old posts -> Just save your access_token
