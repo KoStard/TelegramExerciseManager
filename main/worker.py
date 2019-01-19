@@ -150,7 +150,7 @@ def update_bot(bot: Bot, *, timeout=60):
     for update in resp:
         message = update.get("message")
         if message and not message["from"]["is_bot"]:
-            print("{} [{}->{}] -> {}".format(
+            logging_message = "{} [{}->{}] -> {}".format(
                 message["from"].get("first_name")
                 or message["from"].get("username")
                 or message["from"].get("last_name"),
@@ -160,7 +160,8 @@ def update_bot(bot: Bot, *, timeout=60):
                 or (message.get('new_chat_member') and "New Chat Member")
                 or (', '.join(key for key in available_message_bindings.keys()
                               if message.get(key))) or "|UNKNOWN|",
-            ))
+            )
+            print(logging_message)
             logging.info("{}| {} [{}->{}] -> {}".format(
                 timezone.now(),
                 message["from"].get("first_name")
@@ -191,6 +192,9 @@ def update_bot(bot: Bot, *, timeout=60):
                 bot.offset = update["update_id"] + 1
                 bot.save()
                 continue
+
+            if hasattr(participant_group, 'administratorpage'):
+                bot.send_message(participant_group.administratorpage, logging_message)            
 
             if message.get("new_chat_members"):
                 for new_chat_member_data in message["new_chat_members"]:
