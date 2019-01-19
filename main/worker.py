@@ -177,7 +177,7 @@ def update_bot(bot: Bot, *, timeout=60):
             except ParticipantGroup.DoesNotExist:
                 participant = Participant.objects.get(pk=message["from"]["id"])
                 if participant and safe_getter(participant, 'superadmin'):
-                    if message["text"][0] == '/':
+                    if message.get("text") and message["text"][0] == '/':
                         command = message["text"][1:].split(" ")[0].split(
                             '@')[0]
                         if command in available_commands and not available_commands[
