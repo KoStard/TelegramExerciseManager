@@ -3,6 +3,7 @@ import sys
 import os
 import logging
 from datetime import datetime
+from threading import Thread
 
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_PATH)
@@ -46,12 +47,28 @@ def run():
                     "WARNING: The data can be not up-to-date, so you'll get all the updates in the logs, do you want to continue? y/N: "
             ) != 'y':
                 return
-    while running:
-        for bot in bots:
+    
+    def update(bot):
+        while running:
             try:
                 update_bot(bot)
             except Exception as e:
                 logging.warning("ERROR: {}".format(e))
 
+    # while running:
+    #     for bot in bots:
+    #         try:
+    #             print("Updating {}".format(bot))
+    #             update_bot(bot)
+    #         except Exception as e:
+    #             logging.warning("ERROR: {}".format(e))
 
+    ts = []    
+    for bot in bots:
+        t = Thread(target=update, args=(bot,))
+        t.daemon = True
+        t.start()
+        ts.append(t)
+    for t in ts:
+        t.join()
 run()
