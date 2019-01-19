@@ -27,8 +27,8 @@ def participant_answering(participant, participant_group, problem, variant):
         problem.answer_set.filter(
             right=True,
             processed=False,
-            group_specific_participant_data__participant_group=participant_group)
-    )  # Getting right answers only from current group
+            group_specific_participant_data__participant_group=participant_group
+        ))  # Getting right answers only from current group
     if variant == problem.right_variant.lower():
         print("Right answer from {} N{}".format(participant,
                                                 right_answers_count + 1))
@@ -74,8 +74,8 @@ available_entities = {
 }
 
 
-def check_entities(bot: Bot, participant_group: ParticipantGroup, participant: Participant,
-                   entities: list, message: dict):
+def check_entities(bot: Bot, participant_group: ParticipantGroup,
+                   participant: Participant, entities: list, message: dict):
     groupspecificparticipantdata = participant.groupspecificparticipantdata_set.filter(
         participant_group=participant_group)
     resp = {"status": True, "unknown": False}
@@ -115,8 +115,8 @@ available_message_bindings = {
 }
 
 
-def check_message_bindings(bot: Bot, participant_group: ParticipantGroup, participant: Participant,
-                   message: dict):
+def check_message_bindings(bot: Bot, participant_group: ParticipantGroup,
+                           participant: Participant, message: dict):
     groupspecificparticipantdata = participant.groupspecificparticipantdata_set.filter(
         participant_group=participant_group)
     resp = {"status": True, "unknown": False}
@@ -128,12 +128,15 @@ def check_message_bindings(bot: Bot, participant_group: ParticipantGroup, partic
              participantgroupbinding_set.all()),
             default=0)
     for message_binding in available_message_bindings:
-        if message_binding in message and available_message_bindings[message_binding] > priority_level:
+        if message_binding in message and available_message_bindings[
+                message_binding] > priority_level:
             resp["status"] = False
             if ("cause" not in resp):
                 resp["cause"] = []
-            resp["cause"].append("\"{}\" message binding is not allowed for users with priority level lower than {}".format(
-                    message_binding, available_message_bindings[message_binding]))
+            resp["cause"].append(
+                "\"{}\" message binding is not allowed for users with priority level lower than {}"
+                .format(message_binding,
+                        available_message_bindings[message_binding]))
     return resp
 
 
@@ -152,8 +155,10 @@ def update_bot(bot: Bot, *, timeout=10):
                 or message["from"].get("username")
                 or message["from"].get("last_name"),
                 bot,
-                message.get("text") or (message.get('new_chat_member') and "New Chat Member")
-                or (', '.join(key for key in available_message_bindings.keys() if message.get(key)))  or "|UNKNOWN|",
+                message.get("text")
+                or (message.get('new_chat_member') and "New Chat Member")
+                or (', '.join(key for key in available_message_bindings.keys()
+                              if message.get(key))) or "|UNKNOWN|",
             ))
             logging.info("{}| {} [{}] -> {}".format(
                 timezone.now(),
@@ -164,7 +169,8 @@ def update_bot(bot: Bot, *, timeout=10):
                 message.get("text") or message,
             ))
             try:
-                participant_group = ParticipantGroup.objects.get(telegram_id=message["chat"]["id"])
+                participant_group = ParticipantGroup.objects.get(
+                    telegram_id=message["chat"]["id"])
             except ParticipantGroup.DoesNotExist:
                 bot.send_message(
                     message["chat"]["id"],
@@ -215,11 +221,12 @@ def update_bot(bot: Bot, *, timeout=10):
                         "sum_score": 0,
                     })
                 participant.save()
-                GroupSpecificParticipantData(**{
-                    "participant": participant,
-                    "group": participant_group,
-                    "score": 0
-                }).save()
+                GroupSpecificParticipantData(
+                    **{
+                        "participant": participant,
+                        "group": participant_group,
+                        "score": 0
+                    }).save()
             else:
                 # Updating the participant information when getting an update from him/her
                 participant.username = message["from"].get("username")
@@ -229,8 +236,8 @@ def update_bot(bot: Bot, *, timeout=10):
             text = message.get("text")
             entities = message.get("entities")
             if entities:
-                entities_check_resp = check_entities(bot, participant_group, participant, entities,
-                                      message)
+                entities_check_resp = check_entities(
+                    bot, participant_group, participant, entities, message)
                 if not entities_check_resp["status"]:
                     logging.info(entities_check_resp["cause"])
                     if not entities_check_resp["unknown"]:
@@ -245,26 +252,30 @@ def update_bot(bot: Bot, *, timeout=10):
                         bot.send_message(
                             participant_group,
                             "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard"                                                                         .
+                            \nFor more information contact with @KoStard".
                             format(
                                 participant.name,
                                 entities_check_resp["cause"],
-                                ", ".join("{} - {}".format(
-                                    participantgroupbinding.role.name,
-                                    participantgroupbinding.role.
-                                    priority_level,
-                                ) for participantgroupbinding in participant.
-                                          groupspecificparticipantdata_set.get(
-                                              participant_group=participant_group).
-                                          participantgroupbinding_set.all()),
+                                ", ".join(
+                                    "{} - {}".format(
+                                        participantgroupbinding.role.name,
+                                        participantgroupbinding.role.
+                                        priority_level,
+                                    )
+                                    for participantgroupbinding in participant.
+                                    groupspecificparticipantdata_set.get(
+                                        participant_group=participant_group).
+                                    participantgroupbinding_set.all()),
                             ),
                             reply_to_message_id=message["message_id"],
                         )
-                        bot.delete_message(participant_group, message["message_id"])
+                        bot.delete_message(participant_group,
+                                           message["message_id"])
                         bot.offset = update["update_id"] + 1
                         bot.save()
                         continue
-            message_bindings_check_resp = check_message_bindings(bot, participant_group, participant, message)
+            message_bindings_check_resp = check_message_bindings(
+                bot, participant_group, participant, message)
             if not message_bindings_check_resp["status"]:
                 logging.info(message_bindings_check_resp["cause"])
                 if not message_bindings_check_resp["unknown"]:
@@ -279,22 +290,21 @@ def update_bot(bot: Bot, *, timeout=10):
                     bot.send_message(
                         participant_group,
                         "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                        \nFor more information contact with @KoStard"                                                                     .
-                        format(
+                        \nFor more information contact with @KoStard".format(
                             participant.name,
                             ', '.join(message_bindings_check_resp["cause"]),
                             ", ".join("{} - {}".format(
                                 participantgroupbinding.role.name,
-                                participantgroupbinding.role.
-                                priority_level,
+                                participantgroupbinding.role.priority_level,
                             ) for participantgroupbinding in participant.
-                                        groupspecificparticipantdata_set.get(
-                                            participant_group=participant_group).
-                                        participantgroupbinding_set.all()),
+                                      groupspecificparticipantdata_set.get(
+                                          participant_group=participant_group).
+                                      participantgroupbinding_set.all()),
                         ),
                         reply_to_message_id=message["message_id"],
                     )
-                    bot.delete_message(participant_group, message["message_id"])
+                    bot.delete_message(participant_group,
+                                       message["message_id"])
                     bot.offset = update["update_id"] + 1
                     bot.save()
                     continue
@@ -307,12 +317,14 @@ def update_bot(bot: Bot, *, timeout=10):
                     if participant_group.activeProblem and BotBinding.objects.filter(
                             bot=bot, participant_group=participant_group):
                         participant_answering(participant, participant_group,
-                                              participant_group.activeProblem, text)
+                                              participant_group.activeProblem,
+                                              text)
                 elif text[0] == "/":
                     command = text[1:].split(" ")[0].split('@')[0]
                     if command in available_commands:
                         participant_group_bindings = participant.groupspecificparticipantdata_set.get(
-                            participant_group=participant_group).participantgroupbinding_set.all()
+                            participant_group=participant_group
+                        ).participantgroupbinding_set.all()
                         if participant_group_bindings:
                             max_priority_role = sorted(
                                 participant_group_bindings,
@@ -325,7 +337,8 @@ def update_bot(bot: Bot, *, timeout=10):
                         if priority_level >= available_commands[command][1]:
                             if available_commands[command][2]:
                                 if not BotBinding.objects.filter(
-                                        bot=bot, participant_group=participant_group):
+                                        bot=bot,
+                                        participant_group=participant_group):
                                     bot.send_message(
                                         participant_group,
                                         "Hi, if you want to use this bot in "
@@ -334,8 +347,8 @@ def update_bot(bot: Bot, *, timeout=10):
                                             "message_id"],
                                     )
                                     return
-                            available_commands[command][0](bot, participant_group, text,
-                                                           message)
+                            available_commands[command][0](
+                                bot, participant_group, text, message)
                         else:
                             bot.send_message(
                                 participant_group,
@@ -355,12 +368,12 @@ def update_bot(bot: Bot, *, timeout=10):
 
 
 def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
-    if len(text.split()) > 1:
-        index = int(text.split()[1])
-    else:
-        pass # For sending problems without indices
+    index = int(text.split()[1]) if len(
+        text.split()
+    ) > 1 else participant_group.activeSubjectGroupBinding.last_problem.next.index
     try:
-        problem = participant_group.activeSubjectGroupBinding.subject.problem_set.get(index=index)
+        problem = participant_group.activeSubjectGroupBinding.subject.problem_set.get(
+            index=index)
     except Problem.DoesNotExist:
         bot.send_message(
             participant_group,
@@ -408,9 +421,11 @@ def answer_problem(bot, participant_group, text, message):
             return
         elif not problem or index < problem.index:
             try:
-                problem = participant_group.activeSubjectGroupBinding.subject.problem_set.get(index=index)
+                problem = participant_group.activeSubjectGroupBinding.subject.problem_set.get(
+                    index=index)
             except Problem.DoesNotExist:
-                bot.send_message(participant_group, "Invalid problem number {}.")
+                bot.send_message(participant_group,
+                                 "Invalid problem number {}.")
             else:
                 bot.send_message(participant_group, problem.get_answer())
             return
@@ -475,8 +490,10 @@ def get_score(bot, participant_group, text, message):
                 reply_to_message_id=message["message_id"],
             )
 
+
 def report(bot, participant_group, text, message):
     pass
+
 
 #- (function, min_priority_level, needs_binding)
 available_commands = {
@@ -505,14 +522,15 @@ def createGroupLeaderBoard(participant_group: ParticipantGroup):
         "non_standard_role":
         safe_getter(gs.highest_non_standard_role_binding, "role"),
     } for gs in sorted(
-        (gs
-         for gs in participant_group.groupspecificparticipantdata_set.all() if gs.score),
+        (gs for gs in participant_group.groupspecificparticipantdata_set.all()
+         if gs.score),
         key=lambda gs: [gs.score, gs.percentage],
     )[::-1]]
     return gss
 
 
-def get_promoted_participants_list_for_leaderboard(participant_group: ParticipantGroup):
+def get_promoted_participants_list_for_leaderboard(
+        participant_group: ParticipantGroup):
     admin_gss = [{
         "participant":
         gs.participant,
@@ -527,9 +545,12 @@ def get_promoted_participants_list_for_leaderboard(participant_group: Participan
     return admin_gss
 
 
-def createGroupLeaderBoardForTelegraph(participant_group: ParticipantGroup, *, max_limit=0):
+def createGroupLeaderBoardForTelegraph(participant_group: ParticipantGroup,
+                                       *,
+                                       max_limit=0):
     raw_leaderboard = createGroupLeaderBoard(participant_group)
-    raw_promoted_list = get_promoted_participants_list_for_leaderboard(participant_group)
+    raw_promoted_list = get_promoted_participants_list_for_leaderboard(
+        participant_group)
     res = []
 
     res.append(
@@ -604,10 +625,13 @@ def createGroupLeaderBoardForTelegraph(participant_group: ParticipantGroup, *, m
 def create_and_save_telegraph_page(t_account: TelegraphAccount,
                                    title: str,
                                    content: list,
-                                   participant_group: ParticipantGroup=None):
+                                   participant_group: ParticipantGroup = None):
     d = DynamicTelegraphPageCreator(t_account.access_token)
     p = d.create_page(title, content, return_content=True)
     d.load_and_set_page(p['path'])
     TelegraphPage(
-        path=p['path'], url=p['url'], account=t_account, participant_group=participant_group).save()
+        path=p['path'],
+        url=p['url'],
+        account=t_account,
+        participant_group=participant_group).save()
     return d
