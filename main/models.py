@@ -270,8 +270,7 @@ class Bot(User):
                      *,
                      parse_mode='HTML',
                      reply_to_message_id=None):
-        if not (isinstance(group, str)
-                or isinstance(group, int)):
+        if not (isinstance(group, str) or isinstance(group, int)):
             group = group.telegram_id
 
         if parse_mode == 'Markdown':

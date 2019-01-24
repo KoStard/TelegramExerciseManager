@@ -154,7 +154,7 @@ def update_bot(bot: Bot, *, timeout=60):
                 message["from"].get("first_name")
                 or message["from"].get("username")
                 or message["from"].get("last_name"),
-                message["chat"]["title"],
+                message["chat"].get("title"),
                 bot,
                 message.get("text")
                 or (message.get('new_chat_member') and "New Chat Member")
@@ -167,7 +167,7 @@ def update_bot(bot: Bot, *, timeout=60):
                 message["from"].get("first_name")
                 or message["from"].get("username")
                 or message["from"].get("last_name"),
-                message["chat"]["title"],
+                message["chat"].get("title"),
                 bot,
                 message.get("text") or message,
             ))
@@ -175,7 +175,9 @@ def update_bot(bot: Bot, *, timeout=60):
                 participant_group = ParticipantGroup.objects.get(
                     telegram_id=message["chat"]["id"])
             except ParticipantGroup.DoesNotExist:
-                participant = Participant.objects.get(pk=message["from"]["id"])
+                participant = Participant.objects.filter(pk=message["from"]["id"])
+                if participant:
+                    participant = participant[0]
                 if participant and safe_getter(participant, 'superadmin'):
                     if message.get("text") and message["text"][0] == '/':
                         command = message["text"][1:].split(" ")[0].split(
