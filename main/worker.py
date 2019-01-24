@@ -19,7 +19,7 @@ def participant_answering(participant, participant_group, problem, variant):
         group_specific_participant_data = GroupSpecificParticipantData(
             **{
                 "participant": participant,
-                "group": participant_group,
+                "participant_group": participant_group,
                 "score": 0
             })
         group_specific_participant_data.save()
@@ -216,7 +216,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         **{
                             "participant":
                             participant,
-                            "group":
+                            "participant_group":
                             participant_group,
                             "score":
                             0,
@@ -240,7 +240,7 @@ def update_bot(bot: Bot, *, timeout=60):
                 GroupSpecificParticipantData(
                     **{
                         "participant": participant,
-                        "group": participant_group,
+                        "participant_group": participant_group,
                         "score": 0
                     }).save()
             else:
@@ -262,7 +262,7 @@ def update_bot(bot: Bot, *, timeout=60):
                             GroupSpecificParticipantData(
                                 **{
                                     "participant": participant,
-                                    "group": participant_group,
+                                    "participant_group": participant_group,
                                     "score": 0,
                                 }).save()
                         bot.send_message(
@@ -300,7 +300,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         GroupSpecificParticipantData(
                             **{
                                 "participant": participant,
-                                "group": participant_group,
+                                "participant_group": participant_group,
                                 "score": 0,
                             }).save()
                     bot.send_message(
