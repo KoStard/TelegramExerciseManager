@@ -548,14 +548,14 @@ class Answer(models.Model):
     def __str__(self):
         return '{}[{}] {} -> Problem {}'.format(
             ("+" if self.right else "-") if self.processed else "*",
-            self.answer.upper(), self.group_specific_participant_data,
-            self.problem.index)
+            (self.answer.upper() if self.answer else '-'),
+            self.group_specific_participant_data, self.problem.index)
 
     @staticmethod
     def get_list_display():
         return (
             ("Problem", "self.problem.index"),
-            ("Answer", "self.answer.upper()"),
+            ("Answer", "self.answer.upper() if self.answer else '-'"),
             "right",
             "processed",
             "group_specific_participant_data",

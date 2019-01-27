@@ -7,7 +7,7 @@ import urllib
 def get_response(url, *, payload=None, files=None, use_post=False):
     headers = {"Content-Type": "application/json"}
     if files or use_post:
-        resp = requests.post(url, params=payload, files=files, headers=headers)
+        resp = requests.post(url, params=payload, files=files)
     else:
         resp = requests.get(url, params=payload)
     if resp.status_code == 200:

@@ -179,7 +179,7 @@ class AnswerAdmin(admin.ModelAdmin):
     Problem.admin_order_field = "problem__index"
 
     def Answer(current, self):
-        return self.answer.upper()
+        return self.answer.upper() if self.answer else '-'
 
     Answer.admin_order_field = "answer__upper()"
 
