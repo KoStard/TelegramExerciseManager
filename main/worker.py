@@ -174,7 +174,8 @@ def update_bot(bot: Bot, *, timeout=60):
                 participant_group = ParticipantGroup.objects.get(
                     telegram_id=message["chat"]["id"])
             except ParticipantGroup.DoesNotExist:
-                participant = Participant.objects.filter(pk=message["from"]["id"])
+                participant = Participant.objects.filter(
+                    pk=message["from"]["id"])
                 if participant:
                     participant = participant[0]
                 if participant and safe_getter(participant, 'superadmin'):
@@ -226,7 +227,8 @@ def update_bot(bot: Bot, *, timeout=60):
             try:
                 participant = Participant.objects.get(pk=message["from"]["id"])
                 groupspecificparticipantdata = participant.groupspecificparticipantdata_set.get(
-                    participant_group=participant_group) # Automatically registering participant in the group
+                    participant_group=participant_group
+                )  # Automatically registering participant in the group
             except Participant.DoesNotExist:
                 participant = Participant(
                     **{
@@ -259,7 +261,6 @@ def update_bot(bot: Bot, *, timeout=60):
                 participant.last_name = message["from"].get("last_name")
                 participant.save()
 
-
             text = message.get("text")
             entities = message.get("entities")
 
@@ -270,7 +271,7 @@ def update_bot(bot: Bot, *, timeout=60):
             if entities:
                 entities_check_resp = check_entities(
                     bot, participant_group, participant, entities, message)
-                logging.info("Found Entity:",entities_check_resp)
+                logging.info("Found Entity:", entities_check_resp)
                 if not entities_check_resp["status"]:
                     if not entities_check_resp["unknown"]:
                         bot.send_message(
@@ -463,6 +464,33 @@ def answer_problem(bot, participant_group, text, message):
     participant_group.save()
 
 
+def cancel_problem(bot: Bot, participant_group: ParticipantGroup, text: str,
+                   message: dict):
+    if participant_group.activeProblem:
+        answers = [
+            answer for answer in Answer.objects.filter(
+                group_specific_participant_data__participant_group=
+                participant_group,
+                problem=participant_group.activeProblem)
+        ]
+        for answer in answers:
+            answer.destroy()
+        participant_group.activeSubjectGroupBinding.last_problem = participant_group.activeProblem.previous(
+        )
+        participant_group.activeSubjectGroupBinding.save()
+        participant_group.activeProblem = None
+        participant_group.save()
+        bot.send_message(
+            participant_group,
+            "The problem {} is cancelled.",
+            reply_to_message_id=message['message_id'])
+    else:
+        bot.send_message(
+            participant_group,
+            "There is not active problem to cancel.",
+            reply_to_message_id=message['message_id'])
+
+
 def start_in_participant_group(bot, participant_group, text,
                                message):  # Won't work in new groups
     binding = BotBinding(bot=bot, participant_group=participant_group)
@@ -537,6 +565,7 @@ def stop_in_administrator_page(bot, participant_group, text, message):
 available_commands = {
     "send": (send_problem, 6, True),
     "answer": (answer_problem, 6, True),
+    "cancel_problem": (cancel_problem, 6, True),
     "start_participant": (start_in_participant_group, 8, False),
     "stop_participant": (remove_from_participant_group, 8, True),
     "add_subject": (add_subject, 9, True),
