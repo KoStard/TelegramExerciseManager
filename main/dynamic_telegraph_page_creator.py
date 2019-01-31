@@ -5,7 +5,8 @@ import json
 
 
 class classproperty(property):
-    def __get__(self, cls, owner):
+
+    def __get__(self, cls, owner) -> dict:
         return classmethod(self.fget).__get__(None, owner)()
 
 
@@ -109,18 +110,13 @@ class DynamicTelegraphPageCreator:
         self.title = self.title if title == self.__temp_obj else title
         params = dict(
             self.base_params, **{
-                "path":
-                self.page_path,
-                "content":
-                json.dumps(self.content),
-                "title":
-                self.title,
-                "return_content":
-                False if return_content == self.__temp_obj else return_content,
-                "author_name":
-                self.author_name,
-                "author_url":
-                self.author_url,
+                "path": self.page_path,
+                "content": json.dumps(self.content),
+                "title": self.title,
+                "return_content": False if return_content == self.__temp_obj
+                                  else return_content,
+                "author_name": self.author_name,
+                "author_url": self.author_url,
             })
         return get_response_with_urllib(url, payload=params)
 
@@ -132,13 +128,13 @@ class DynamicTelegraphPageCreator:
                 "return_content": return_content
             })
 
-    @classproperty
-    def base_element(cls):
+    @classmethod
+    def base_element(self) -> dict:
         return {"tag": None, "attrs": {}, "children": []}  # for href and src
 
     @classmethod
-    def createElement(cls, tag, content=None, attrs={}):
-        base = cls.base_element
+    def createElement(self, tag, content=None, attrs={}) -> dict:
+        base = self.base_element()
         base["tag"] = tag
         base["attrs"] = attrs
         if content is not None:
@@ -147,10 +143,6 @@ class DynamicTelegraphPageCreator:
             else:
                 base["children"].append(content)
         return base
-
-    @classproperty
-    def initial_content(cls):  # append element here
-        return []
 
     @classmethod
     def create_bold(cls, content=None):
@@ -161,7 +153,7 @@ class DynamicTelegraphPageCreator:
         return cls.createElement("h{}".format(size), content)
 
     @classmethod
-    def create_ordered_list(cls, content=None):
+    def create_ordered_list(cls, content=None) -> dict:
         return cls.createElement("ol", content)
 
     @classmethod

@@ -2,6 +2,7 @@ import django
 import sys
 import os
 import logging
+import time
 from datetime import datetime
 from threading import Thread
 
@@ -28,8 +29,8 @@ def run():
                     len(
                         Answer.objects.filter(
                             problem=binding.participant_group.activeProblem,
-                            group_specific_participant_data__participant_group=binding.
-                            participant_group,
+                            group_specific_participant_data__participant_group=
+                            binding.participant_group,
                             right=True,
                             processed=False))))
         td = datetime.now(timezone.utc) - bot.last_updated
@@ -41,19 +42,20 @@ def run():
                     bot.base_url + "getUpdates",
                     payload={
                         'offset': bot.offset or "",
-                        'timeout': timeout
+                        'timeout': 0
                     }))
             if input(
                     "WARNING: The data can be not up-to-date, so you'll get all the updates in the logs, do you want to continue? y/N: "
             ) != 'y':
                 return
-    
+
     def update(bot):
         while running:
             try:
                 update_bot(bot)
             except Exception as e:
                 logging.warning("ERROR: {}".format(e))
+                time.sleep(1)
 
     # while running:
     #     for bot in bots:
@@ -63,7 +65,7 @@ def run():
     #         except Exception as e:
     #             logging.warning("ERROR: {}".format(e))
 
-    ts = []    
+    ts = []
     for bot in bots:
         t = Thread(target=update, args=(bot,))
         t.daemon = True
@@ -71,4 +73,6 @@ def run():
         ts.append(t)
     for t in ts:
         t.join()
+
+
 run()

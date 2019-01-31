@@ -33,9 +33,9 @@ def configure_logging():
     """ Encoding will be utf-8 """
     root_logger = logging.getLogger()
     """ Preventing multiple calls """
-    if (root_logger.handlers
-            and root_logger.handlers[0].stream.name == "logs.txt"
-            and root_logger.handlers[0].stream.encoding == "utf-8"):
+    if (root_logger.handlers and
+            root_logger.handlers[0].stream.name == "logs.txt" and
+            root_logger.handlers[0].stream.encoding == "utf-8"):
         return
     root_logger.setLevel(logging.INFO)
     handler = logging.FileHandler("logs.txt", "a", "utf-8")
@@ -47,3 +47,10 @@ def safe_getter(obj, attr):
     if not obj or not hasattr(obj, attr):
         return None
     return getattr(obj, attr)
+
+
+def get_from_Model(Model, **kwargs):
+    try:
+        return Model.objects.get(**kwargs)
+    except Model.DoesNotExist:
+        return None

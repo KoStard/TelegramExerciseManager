@@ -1,5 +1,5 @@
 from main.models import *
-from main.universals import get_response, configure_logging, safe_getter
+from main.universals import get_response, configure_logging, safe_getter, get_from_Model
 from main.dynamic_telegraph_page_creator import DynamicTelegraphPageCreator
 from django.utils import timezone
 from time import sleep
@@ -41,18 +41,12 @@ def participant_answering(participant, participant_group, problem, variant):
             processed=False):
         answer = Answer(
             **{
-                "problem":
-                problem,
-                "answer":
-                variant,
-                "right":
-                is_right,
-                "processed":
-                False,
-                "group_specific_participant_data":
-                group_specific_participant_data,
-                "date":
-                timezone.now(),
+                "problem": problem,
+                "answer": variant,
+                "right": is_right,
+                "processed": False,
+                "group_specific_participant_data": group_specific_participant_data,
+                "date": timezone.now(),
             })
         answer.save()
 
@@ -151,25 +145,26 @@ def update_bot(bot: Bot, *, timeout=60):
         message = update.get("message")
         if message and not message["from"]["is_bot"]:
             print("{} [{}->{}] -> {}".format(
-                message["from"].get("first_name")
-                or message["from"].get("username")
-                or message["from"].get("last_name"),
+                message["from"].get("first_name") or
+                message["from"].get("username") or
+                message["from"].get("last_name"),
                 message["chat"].get("title"),
                 bot,
-                message.get("text")
-                or (message.get('new_chat_member') and "New Chat Member")
-                or (', '.join(key for key in available_message_bindings.keys()
-                              if message.get(key))) or "|UNKNOWN|",
+                message.get("text") or
+                (message.get('new_chat_member') and "New Chat Member") or
+                (', '.join(key for key in available_message_bindings.keys()
+                           if message.get(key))) or "|UNKNOWN|",
             ))
             logging.info("{}| {} [{}->{}] -> {}".format(
                 timezone.now(),
-                message["from"].get("first_name")
-                or message["from"].get("username")
-                or message["from"].get("last_name"),
+                message["from"].get("first_name") or
+                message["from"].get("username") or
+                message["from"].get("last_name"),
                 message["chat"].get("title"),
                 bot,
                 message.get("text") or message,
             ))
+            text = message.get("text")
             try:
                 participant_group = ParticipantGroup.objects.get(
                     telegram_id=message["chat"]["id"])
@@ -179,13 +174,24 @@ def update_bot(bot: Bot, *, timeout=60):
                 if participant:
                     participant = participant[0]
                 if participant and safe_getter(participant, 'superadmin'):
-                    if message.get("text") and message["text"][0] == '/':
-                        command = message["text"][1:].split(" ")[0].split(
+                    if text and text[0] == '/':
+                        command = text[1:].split(" ")[0].split(
                             '@')[0]
-                        if command in available_commands and not available_commands[
-                                command][2] and available_commands[command][
-                                    1] == 'superadmin':
-                            available_commands[command][0](bot, message)
+                        if command in available_commands and available_commands[
+                                command][1] == 'superadmin':
+                            if not available_commands[command][2]:
+                                available_commands[command][0](bot, message)
+                            else:
+                                administratorpage = get_from_Model(
+                                    AdministratorPage,
+                                    telegram_id=message['chat']['id'])
+                                if administratorpage:
+                                    #- In the registered administrator page
+                                    available_commands[command][0](
+                                        bot, administratorpage, text, message)
+                                else:
+                                    #- In the unknown page
+                                    pass
                 else:
                     bot.send_message(
                         message["chat"]["id"],
@@ -205,22 +211,18 @@ def update_bot(bot: Bot, *, timeout=60):
                         **{
                             "id": new_chat_member_data["id"],
                             "username": new_chat_member_data.get("username"),
-                            "first_name": new_chat_member_data.get(
-                                "first_name"),
+                            "first_name": new_chat_member_data.get("first_name"
+                                                                  ),
                             "last_name": new_chat_member_data.get("last_name"),
                             "sum_score": 0,
                         })
                     participant.save()
                     GroupSpecificParticipantData(
                         **{
-                            "participant":
-                            participant,
-                            "participant_group":
-                            participant_group,
-                            "score":
-                            0,
-                            "joined":
-                            datetime.fromtimestamp(
+                            "participant": participant,
+                            "participant_group": participant_group,
+                            "score": 0,
+                            "joined": datetime.fromtimestamp(
                                 message["date"],
                                 tz=timezone.get_current_timezone()),
                         }).save()
@@ -261,7 +263,6 @@ def update_bot(bot: Bot, *, timeout=60):
                 participant.last_name = message["from"].get("last_name")
                 participant.save()
 
-            text = message.get("text")
             entities = message.get("entities")
 
             if hasattr(participant_group, 'administratorpage'):
@@ -271,7 +272,7 @@ def update_bot(bot: Bot, *, timeout=60):
             if entities:
                 entities_check_resp = check_entities(
                     bot, participant_group, participant, entities, message)
-                logging.info("Found Entity:", entities_check_resp)
+                logging.info("Found Entity: " + str(entities_check_resp))
                 if not entities_check_resp["status"]:
                     if not entities_check_resp["unknown"]:
                         bot.send_message(
@@ -283,12 +284,11 @@ def update_bot(bot: Bot, *, timeout=60):
                                 entities_check_resp["cause"],
                                 ", ".join("{} - {}".format(
                                     participantgroupbinding.role.name,
-                                    participantgroupbinding.role.
-                                    priority_level,
+                                    participantgroupbinding.role.priority_level,
                                 ) for participantgroupbinding in
                                           groupspecificparticipantdata.
-                                          participantgroupbinding_set.all())
-                                or '-',
+                                          participantgroupbinding_set.all()) or
+                                '-',
                             ),
                             reply_to_message_id=message["message_id"],
                         )
@@ -305,7 +305,7 @@ def update_bot(bot: Bot, *, timeout=60):
                     bot.send_message(
                         participant_group,
                         "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                        \nFor more information contact with @KoStard".format(
+                        \nFor more information contact with @KoStard"                                                                     .format(
                             participant.name,
                             ', '.join(message_bindings_check_resp["cause"]),
                             ", ".join("{} - {}".format(
@@ -317,17 +317,16 @@ def update_bot(bot: Bot, *, timeout=60):
                         ),
                         reply_to_message_id=message["message_id"],
                     )
-                    bot.delete_message(participant_group,
-                                       message["message_id"])
+                    bot.delete_message(participant_group, message["message_id"])
                     bot.offset = update["update_id"] + 1
                     bot.save()
                     continue
             if text:
                 if len(text) == 1 and (
                         ord(text) in range(ord("a"),
-                                           ord("e") + 1)
-                        or ord(text) in range(ord("A"),
-                                              ord("E") + 1)):
+                                           ord("e") + 1) or
+                        ord(text) in range(ord("A"),
+                                           ord("E") + 1)):
                     if participant_group.activeProblem and BotBinding.objects.filter(
                             bot=bot, participant_group=participant_group):
                         participant_answering(participant, participant_group,
@@ -365,8 +364,9 @@ def update_bot(bot: Bot, *, timeout=60):
                             bot.send_message(
                                 participant_group,
                                 'Sorry dear {}, you don\'t have permission to use \
-                                this command - your role highest role is "{}".'
-                                .format(participant, max_priority_role.name),
+                                command {} - your highest role is "{}".'                                                                        .format(
+                                    participant, command,
+                                    max_priority_role.name),
                                 reply_to_message_id=message["message_id"],
                             )
                     elif command:
@@ -414,6 +414,7 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
                     problem.index))
             except Exception as e:
                 print("Can't send image {}".format(problem.img))
+                print(e)
         participant_group.activeProblem = problem
         participant_group.save()
         participant_group.activeSubjectGroupBinding.last_problem = problem
@@ -547,8 +548,8 @@ def start_in_administrator_page(bot: Bot, message):
         telegram_id=message["chat"]["id"],
         username=message["chat"].get("username"),
         title=message["chat"].get("title"),
-        type=(GroupType.objects.filter(name=message["chat"].get("type"))
-              or [None])[0],
+        type=(GroupType.objects.filter(name=message["chat"].get("type")) or
+              [None])[0],
     )
     administrator_page.save()
     bot.send_message(
@@ -557,8 +558,17 @@ def start_in_administrator_page(bot: Bot, message):
         reply_to_message_id=message['message_id'])
 
 
-def stop_in_administrator_page(bot, participant_group, text, message):
+def stop_in_administrator_page(bot, administrator_page, text, message):
     pass
+
+
+def status_in_administrator_page(bot: Bot,
+                                 administrator_page: AdministratorPage,
+                                 text: str, message: dict) -> None:
+    bot.send_message(
+        administrator_page,
+        'Running',
+        reply_to_message_id=message['message_id'])
 
 
 #- (function, min_priority_level, needs_binding)
@@ -575,21 +585,18 @@ available_commands = {
     "report": (report, 2, True),
     "start_admin": (start_in_administrator_page, 'superadmin', False),
     "stop_admin": (stop_in_administrator_page, 'superadmin', True),
+    "status": (status_in_administrator_page, 'superadmin', True),
 }
 
 
 def createGroupLeaderBoard(participant_group: ParticipantGroup):
     gss = [{
-        "participant":
-        gs.participant,
-        "score":
-        gs.score,
-        "percentage":
-        gs.percentage,
-        "standard_role":
-        safe_getter(gs.highest_standard_role_binding, "role"),
-        "non_standard_role":
-        safe_getter(gs.highest_non_standard_role_binding, "role"),
+        "participant": gs.participant,
+        "score": gs.score,
+        "percentage": gs.percentage,
+        "standard_role": safe_getter(gs.highest_standard_role_binding, "role"),
+        "non_standard_role": safe_getter(gs.highest_non_standard_role_binding,
+                                         "role"),
     } for gs in sorted(
         (gs for gs in participant_group.groupspecificparticipantdata_set.all()
          if gs.score),
@@ -601,10 +608,8 @@ def createGroupLeaderBoard(participant_group: ParticipantGroup):
 def get_promoted_participants_list_for_leaderboard(
         participant_group: ParticipantGroup):
     admin_gss = [{
-        "participant":
-        gs.participant,
-        "non_standard_role":
-        gs.highest_non_standard_role_binding.role,
+        "participant": gs.participant,
+        "non_standard_role": gs.highest_non_standard_role_binding.role,
     } for gs in sorted(
         (gs for gs in participant_group.groupspecificparticipantdata_set.all()
          if gs.highest_non_standard_role_binding),
@@ -646,17 +651,17 @@ def createGroupLeaderBoardForTelegraph(participant_group: ParticipantGroup,
                     4, '{}. {} {}'.format(
                         roles_number, gs['standard_role'].name,
                         '⭐' * gs['standard_role'].priority_level)))
-            l = DynamicTelegraphPageCreator.create_ordered_list()
-            res.append(l)
-            current_list = l['children']
+            ordered_list = DynamicTelegraphPageCreator.create_ordered_list()
+            res.append(ordered_list)
+            current_list = ordered_list['children']
             last_role = gs['standard_role']
         if roles_number == 1:
             current_list.append(
                 DynamicTelegraphPageCreator.create_list_item(
                     DynamicTelegraphPageCreator.create_bold([
                         DynamicTelegraphPageCreator.create_code([
-                            DynamicTelegraphPageCreator.create_bold(
-                                '{}'.format(gs['score'])), 'xp{}'.format(
+                            DynamicTelegraphPageCreator.create_bold('{}'.format(
+                                gs['score'])), 'xp{}'.format(
                                     (' [{}%]'.format(gs['percentage'])
                                      if gs['percentage'] is not None else ''))
                         ]), ' - {}'.format(gs['participant'].full_name)
@@ -672,11 +677,10 @@ def createGroupLeaderBoardForTelegraph(participant_group: ParticipantGroup,
                     ]), ' - {}'.format(gs['participant'].full_name)
                 ]))
     res.append(DynamicTelegraphPageCreator.hr)
-    res.append(
-        DynamicTelegraphPageCreator.create_title(3, '{}'.format("Team")))
-    l = DynamicTelegraphPageCreator.create_ordered_list()
-    res.append(l)
-    current_list = l['children']
+    res.append(DynamicTelegraphPageCreator.create_title(3, '{}'.format("Team")))
+    ordered_list = DynamicTelegraphPageCreator.create_ordered_list()
+    res.append(ordered_list)
+    current_list = ordered_list['children']
     for gs in raw_promoted_list:
         current_list.append(
             DynamicTelegraphPageCreator.create_list_item(
