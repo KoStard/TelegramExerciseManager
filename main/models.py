@@ -64,10 +64,12 @@ class Problem(models.Model):
             self.variant_e)
 
     def get_answer(self):
+        """ Is generating problem answer formulation to publish """
         return """\\<b>The right choice is {}\\</b>\n{}\n#Answer to {}\n""".format(
-            self.right_variant, self.answer_formulation, self.index)
+            self.right_variant.upper(), self.answer_formulation, self.index)
 
     def close(self, participant_group):
+        """ Will close the problem for participant group """
         answers = self.answer_set.filter(
             group_specific_participant_data__participant_group=participant_group,
             processed=False

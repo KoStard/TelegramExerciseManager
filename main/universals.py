@@ -26,7 +26,7 @@ def get_response_with_urllib(url, *, payload=None, method="POST"):
     with urllib.request.urlopen(request, data=data) as f:
         resp = f.read()
         res = json.loads(resp.decode("utf-8"), encoding="utf-8")
-        return res.get("result") if res.get("result") != None else res
+        return res.get("result") if res.get("result") is not None else res
 
 
 def configure_logging():
