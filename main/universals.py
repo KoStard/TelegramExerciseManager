@@ -5,6 +5,7 @@ import urllib
 
 
 def get_response(url, *, payload=None, files=None, use_post=False):
+    """ Will get response with get/post based on files existance """
     headers = {"Content-Type": "application/json"}
     if files or use_post:
         resp = requests.post(url, params=payload, files=files)
@@ -20,6 +21,8 @@ def get_response(url, *, payload=None, files=None, use_post=False):
 
 
 def get_response_with_urllib(url, *, payload=None, method="POST"):
+    """ Will get response with post (method kwarg) using urllib
+    Is working better than requests for telegraph pages """
     data = urllib.parse.urlencode(payload).encode("utf-8")
     request = urllib.request.Request(url)
     request.get_method = lambda: method
@@ -30,6 +33,7 @@ def get_response_with_urllib(url, *, payload=None, method="POST"):
 
 
 def configure_logging():
+    """ Will configure logging """
     """ Encoding will be utf-8 """
     root_logger = logging.getLogger()
     """ Preventing multiple calls """
@@ -44,12 +48,14 @@ def configure_logging():
 
 #- Working for related objects too
 def safe_getter(obj, attr):
+    """ Use this function to get attributes without fear of throwing exception """
     if not obj or not hasattr(obj, attr):
         return None
     return getattr(obj, attr)
 
 
 def get_from_Model(Model, **kwargs):
+    """ Use this function to get model without fear of throwing exception """
     try:
         return Model.objects.get(**kwargs)
     except Model.DoesNotExist:

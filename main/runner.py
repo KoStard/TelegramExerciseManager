@@ -27,6 +27,7 @@ running = True
 
 
 def run():
+    """ Will run main cycle and continuously load updates of bots """
     print("Ready.")
     for bot in bots:
         for binding in bot.botbinding_set.all():

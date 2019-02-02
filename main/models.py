@@ -84,6 +84,7 @@ class Problem(models.Model):
                     ])  # Including in the leaderboard only right answers
 
     def get_leader_board(self, participant_group, answers=None):
+        """ Will return problem leaderboard """
         answers = answers or Answer.objects.filter(
             problem=self,
             group_specific_participant_data__participant_group=participant_group,
@@ -110,18 +111,23 @@ class Problem(models.Model):
 
     @property
     def next(self):
+        """ Will return next problem if available """
         if self.index < len(self.subject):
             n = self.subject.problem_set.filter(index=self.index + 1)
-            if n: return n[0]
+            if n:
+                return n[0]
 
     @property
     def previous(self):
+        """ Will return previous problem if available """
         if self.index > 1:
             n = self.subject.problem_set.filter(index=self.index - 1)
-            if n: return n[0]
+            if n:
+                return n[0]
 
     @staticmethod
     def get_list_display():
+        """ Used in the django_admin_creator """
         return (
             'index',
             'formulation',
@@ -147,6 +153,7 @@ class GroupType(models.Model):
 
     @property
     def value(self):
+        """ Will return standardized name as value """
         return re.sub('\s+', '_', self.name.lower().strip())
 
     class Meta:
@@ -178,10 +185,12 @@ class ParticipantGroup(Group):
         'SubjectGroupBinding', on_delete=models.CASCADE, blank=True, null=True)
 
     def get_administrator_page(self):
+        """ Will return administrator page if available """
         return safe_getter(self, 'administratorpage')
 
     @staticmethod
     def get_list_display():
+        """ Used in the django_admin_creator """
         return (
             "telegram_id",
             "username",
@@ -219,10 +228,12 @@ class User(models.Model):
 
     @property
     def name(self):
+        """ Universal method to get available name of the user """
         return self.first_name or self.username or self.last_name
 
     @property
     def full_name(self):
+        """ Universal method to get full name of the user """
         if self.first_name or self.last_name:
             return ' '.join(n for n in (self.first_name, self.last_name) if n)
         else:
@@ -244,9 +255,11 @@ class Bot(User):
 
     @property
     def base_url(self):
+        """ This is the base URL of the bot for all API calls """
         return 'https://api.telegram.org/bot{}/'.format(self.token)
 
     def update_information(self):
+        """ Bot will update it's information with getMe """
         url = self.base_url + 'getMe'
         resp = get_response(url)
         if resp:
@@ -256,6 +269,7 @@ class Bot(User):
             self.save()
 
     def get_group_member(self, participant_group, participant):
+        """ Will find a group member and return if available """
         if isinstance(participant_group, Group):
             participant_group = participant_group.telegram_id
         if isinstance(participant, Participant):
@@ -270,6 +284,7 @@ class Bot(User):
                      *,
                      parse_mode='HTML',
                      reply_to_message_id=None):
+        """ Will send a message to the group """
         if not (isinstance(group, str) or isinstance(group, int)):
             group = group.telegram_id
 
@@ -307,6 +322,7 @@ class Bot(User):
                    *,
                    caption='',
                    reply_to_message_id=None):
+        """ Will send an image to the group """
         if not (isinstance(participant_group, str) or
                 isinstance(participant_group, int)):
             participant_group = participant_group.telegram_id
@@ -324,6 +340,7 @@ class Bot(User):
 
     def delete_message(self, participant_group: str or Group, message_id: int or
                        str):
+        """ Will delete message from the group """
         if not (isinstance(participant_group, str) or
                 isinstance(participant_group, int)):
             participant_group = participant_group.telegram_id
@@ -404,6 +421,7 @@ class GroupSpecificParticipantData(models.Model):
 
     @property
     def percentage(self):
+        """ Will return user percentage if the score is higher or equal to 450 """
         if self.score >= 450:
             return round((1 - sum(
                 answer.problem.value
@@ -411,6 +429,7 @@ class GroupSpecificParticipantData(models.Model):
                          * 1000) / 10
 
     def recalculate_roles(self):
+        """ Will recalculate user's roles in the group """
         standard_bindings = [
             b for b in self.participantgroupbinding_set.all()
             if b.role.from_stardard_kit
@@ -461,7 +480,8 @@ class GroupSpecificParticipantData(models.Model):
 
     @property
     def highest_role_binding(self):
-        res = None
+        """ Will return user's highest role binding in the group """
+        res = Role.objects.get(value='guest')
         for binding in self.participantgroupbinding_set.all():
             if not res or binding.role.priority_level > res.role.priority_level:
                 res = binding
@@ -469,7 +489,8 @@ class GroupSpecificParticipantData(models.Model):
 
     @property
     def highest_standard_role_binding(self):
-        res = None
+        """ Will return user's highest standard role binding in the group """
+        res = Role.objects.get(value='guest')
         for binding in self.participantgroupbinding_set.filter(
                 role__from_stardard_kit=True):
             if not res or binding.role.priority_level > res.role.priority_level:
@@ -478,6 +499,7 @@ class GroupSpecificParticipantData(models.Model):
 
     @property
     def highest_non_standard_role_binding(self):
+        """ Will return user's highest non-standard role binding in the group """
         res = None
         for binding in self.participantgroupbinding_set.filter(
                 role__from_stardard_kit=False):
@@ -573,6 +595,7 @@ class Answer(models.Model):
     date = models.DateTimeField(blank=True, null=True)
 
     def process(self):
+        """ Will process the answer and give points to the user if is right """
         if not self.processed:
             if self.right:
                 self.group_specific_participant_data.score += self.problem.value
@@ -590,6 +613,7 @@ class Answer(models.Model):
 
     @staticmethod
     def get_list_display():
+        """ Used in the django_admin_creator """
         return (
             ("Problem", "self.problem.index"),
             ("Answer", "self.answer.upper() if self.answer else '-'"),
@@ -616,6 +640,7 @@ class SubjectGroupBinding(models.Model):
 
     @staticmethod
     def get_list_display():
+        """ Used in the django_admin_creator """
         return (
             "subject",
             "participant_group",

@@ -35,6 +35,11 @@ getter_template = """\
 
 
 def create(queries):
+    """ Call this function with queries using any of these templates
+    - *path.to_models
+    - path.to.model
+    - model
+     """
     res = res_init
     for arg in queries:
         if arg[0] == '*':
