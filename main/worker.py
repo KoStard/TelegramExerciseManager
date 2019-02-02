@@ -97,7 +97,7 @@ def check_entities(bot: Bot, participant_group: ParticipantGroup,
 
 
 available_message_bindings = {
-    "document": -1,
+    "document": 0,
     "sticker": 0,
     "photo": 1,
     "audio": 2,
