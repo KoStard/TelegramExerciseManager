@@ -1,10 +1,17 @@
-import django
+"""
+This is the main runner file of TelegramProblemGenerator.
+Just call run function and it will continuously update all bots from Bot table.
+The bot's updates won't be accepted if last update was more than 24 hours ago and will ask you for further actions.
+All logs are collected in the logs.txt.
+"""
+
 import sys
 import os
 import logging
 import time
 from datetime import datetime
 from threading import Thread
+import django
 
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_PATH)
@@ -57,14 +64,6 @@ def run():
                 logging.warning("ERROR: {}".format(e))
                 time.sleep(1)
 
-    # while running:
-    #     for bot in bots:
-    #         try:
-    #             print("Updating {}".format(bot))
-    #             update_bot(bot)
-    #         except Exception as e:
-    #             logging.warning("ERROR: {}".format(e))
-
     ts = []
     for bot in bots:
         t = Thread(target=update, args=(bot,))
@@ -75,4 +74,5 @@ def run():
         t.join()
 
 
-run()
+if __name__ == '__main__':
+    run()
