@@ -35,7 +35,7 @@ class ProblemAdmin(admin.ModelAdmin):
 
 @admin.register(GroupType)
 class GroupTypeAdmin(admin.ModelAdmin):
-    list_display = ("name", )
+    list_display = ("name",)
 
 
 @admin.register(Group)
@@ -114,7 +114,7 @@ class ParticipantAdmin(admin.ModelAdmin):
 
 @admin.register(SuperAdmin)
 class SuperAdminAdmin(admin.ModelAdmin):
-    list_display = ("user", )
+    list_display = ("user",)
 
 
 @admin.register(Role)
@@ -143,6 +143,24 @@ class GroupSpecificParticipantDataAdmin(admin.ModelAdmin):
         "participant_group",
         "score",
         "joined",
+    )
+
+
+@admin.register(ViolationType)
+class ViolationTypeAdmin(admin.ModelAdmin):
+    list_display = (
+        "cost",
+        "name",
+        "value",
+    )
+
+
+@admin.register(Violation)
+class ViolationAdmin(admin.ModelAdmin):
+    list_display = (
+        "groupspecificparticipantdata",
+        "date",
+        "type",
     )
 
 
@@ -181,7 +199,7 @@ class AnswerAdmin(admin.ModelAdmin):
     def Answer(current, self):
         return self.answer.upper() if self.answer else '-'
 
-    Answer.admin_order_field = "answer__upper()"
+    Answer.admin_order_field = "answer__upper() if self__answer else '-'"
 
 
 @admin.register(SubjectGroupBinding)

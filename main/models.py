@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from main.universals import (get_response, configure_logging, safe_getter)
 import io
 import re
@@ -484,6 +485,13 @@ class GroupSpecificParticipantData(models.Model):
                 res = binding
         return res
 
+    def create_violation(self, type):
+        """ Will create a violation to this GroupSpecificParticipantData """
+        violation = Violation(
+            groupspecificparticipantdata=self, date=timezone.now(), type=type)
+        violation.save()
+        return violation
+
     def __str__(self):
         return '{}-{{{}}}->{}'.format(self.participant, self.score,
                                       self.participant_group)
@@ -491,6 +499,35 @@ class GroupSpecificParticipantData(models.Model):
     class Meta:
         verbose_name = 'Group Specific Participant Data'
         db_table = 'db_group_specific_participant_data'
+
+
+class ViolationType(models.Model):
+    """ Violation types """
+    cost = models.PositiveIntegerField()
+    name = models.CharField(max_length=20)
+    value = models.CharField(max_length=20)
+
+    def __str__(self):
+        return '{} [-{}]'.format(self.name, self.cost)
+
+    class Meta:
+        verbose_name = 'Violation Type'
+        db_table = 'db_violation_type'
+
+
+class Violation(models.Model):
+    """ Participant violation """
+    groupspecificparticipantdata = models.ForeignKey(
+        GroupSpecificParticipantData, on_delete=models.CASCADE)
+    date = models.DateTimeField()
+    type = models.ForeignKey(ViolationType, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return '{} !!{}!!'.format(self.groupspecificparticipantdata, self.type)
+
+    class Meta:
+        verbose_name = 'Violation'
+        db_table = 'db_violation'
 
 
 class ParticipantGroupBinding(models.Model):
