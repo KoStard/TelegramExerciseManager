@@ -175,8 +175,7 @@ def update_bot(bot: Bot, *, timeout=60):
                     participant = participant[0]
                 if participant and safe_getter(participant, 'superadmin'):
                     if text and text[0] == '/':
-                        command = text[1:].split(" ")[0].split(
-                            '@')[0]
+                        command = text[1:].split(" ")[0].split('@')[0]
                         if command in available_commands and available_commands[
                                 command][1] == 'superadmin':
                             if not available_commands[command][2]:
@@ -294,6 +293,10 @@ def update_bot(bot: Bot, *, timeout=60):
                         )
                         bot.delete_message(participant_group,
                                            message["message_id"])
+                        groupspecificparticipantdata.create_violation(
+                            get_from_Model(
+                                ViolationType,
+                                value='message_entity_low_permissions'))
                         bot.offset = update["update_id"] + 1
                         bot.save()
                         continue
@@ -318,6 +321,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         reply_to_message_id=message["message_id"],
                     )
                     bot.delete_message(participant_group, message["message_id"])
+                    groupspecificparticipantdata.create_violation(get_from_Model(ViolationType, value='message_binding_low_permissions'))
                     bot.offset = update["update_id"] + 1
                     bot.save()
                     continue
@@ -369,6 +373,11 @@ def update_bot(bot: Bot, *, timeout=60):
                                     max_priority_role.name),
                                 reply_to_message_id=message["message_id"],
                             )
+                            groupspecificparticipantdata.create_violation(
+                                get_from_Model(
+                                    ViolationType,
+                                    value='command_low_permissions'))
+
                     elif command:
                         bot.send_message(
                             participant_group,

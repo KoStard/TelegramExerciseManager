@@ -149,8 +149,8 @@ class GroupSpecificParticipantDataAdmin(admin.ModelAdmin):
 @admin.register(ViolationType)
 class ViolationTypeAdmin(admin.ModelAdmin):
     list_display = (
-        "cost",
         "name",
+        "cost",
         "value",
     )
 

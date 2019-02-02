@@ -503,9 +503,9 @@ class GroupSpecificParticipantData(models.Model):
 
 class ViolationType(models.Model):
     """ Violation types """
+    name = models.CharField(max_length=50)
     cost = models.PositiveIntegerField()
-    name = models.CharField(max_length=20)
-    value = models.CharField(max_length=20)
+    value = models.CharField(max_length=50)
 
     def __str__(self):
         return '{} [-{}]'.format(self.name, self.cost)
