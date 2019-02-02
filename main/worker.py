@@ -402,12 +402,13 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
     else:
         form_resp = bot.send_message(participant_group, str(problem))
         logging.debug("Sending problem {}".format(problem.index))
+        logging.info(form_resp)
         if problem.img and form_resp:
             try:
                 bot.send_image(
                     participant_group,
                     open("media/" + problem.img.name, "rb"),
-                    reply_to_message_id=form_resp[0].get("message_id"),
+                    # reply_to_message_id=form_resp[0].get("message_id"), # Temporarily disabling
                     caption="Image of problem N{}.".format(problem.index),
                 )
                 logging.debug("Sending image for problem {}".format(
@@ -415,6 +416,7 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
             except Exception as e:
                 print("Can't send image {}".format(problem.img))
                 print(e)
+                logging.info(e)
         participant_group.activeProblem = problem
         participant_group.save()
         participant_group.activeSubjectGroupBinding.last_problem = problem
