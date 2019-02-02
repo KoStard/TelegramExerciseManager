@@ -58,11 +58,11 @@ class Problem(models.Model):
     chapter = models.CharField(max_length=150, null=True, blank=True)
 
     def __str__(self):
-        return """\\<b>#Problem N{}\\</b>{}\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}""".format(
+        return """\\<b>#Problem N{}\\</b>{}\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}{}""".format(
             self.index, ("\nFrom chapter: #{}".format(self.chapter)
                          if self.chapter else ''), self.formulation,
             self.variant_a, self.variant_b, self.variant_c, self.variant_d,
-            self.variant_e)
+            self.variant_e, (None if self.has_next else '\n#last'))
 
     def get_answer(self):
         """ Is generating problem answer formulation to publish """
@@ -116,6 +116,11 @@ class Problem(models.Model):
             n = self.subject.problem_set.filter(index=self.index + 1)
             if n:
                 return n[0]
+
+    @property
+    def has_next(self):
+        """ Will check if has next problem """
+        return self.index < len(self.subject)
 
     @property
     def previous(self):
