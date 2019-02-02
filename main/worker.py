@@ -9,36 +9,31 @@ import logging
 # configure_logging()
 
 
-def participant_answering(participant, participant_group, problem, variant):
+def participant_answering(participant, participant_group, problem, variant, *,
+                          bot, message):
+    """ Call this function when the user is answering
+    - can be used to manually add answers, if the bot didn't see the message"""
     is_right = False
     variant = variant.lower()
-    try:
-        group_specific_participant_data = participant.groupspecificparticipantdata_set.get(
-            participant_group=participant_group)
-    except GroupSpecificParticipantData.DoesNotExist:
-        group_specific_participant_data = GroupSpecificParticipantData(
-            **{
-                "participant": participant,
-                "participant_group": participant_group,
-                "score": 0
-            })
-        group_specific_participant_data.save()
+    group_specific_participant_data = participant.groupspecificparticipantdata_set.get(
+        participant_group=participant_group)
     right_answers_count = len(
         problem.answer_set.filter(
             right=True,
             processed=False,
             group_specific_participant_data__participant_group=participant_group
         ))  # Getting right answers only from current group
-    if variant == problem.right_variant.lower():
-        print("Right answer from {} N{}".format(participant,
-                                                right_answers_count + 1))
-        is_right = True
-    else:
-        print("Wrong answer from {} - Right answers {}".format(
-            participant, right_answers_count))
-    if not problem.answer_set.filter(
-            group_specific_participant_data=group_specific_participant_data,
-            processed=False):
+    old_answers = problem.answer_set.filter(
+        group_specific_participant_data=group_specific_participant_data,
+        processed=False)
+    if not old_answers:
+        if variant == problem.right_variant.lower():
+            print("Right answer from {} N{}".format(participant,
+                                                    right_answers_count + 1))
+            is_right = True
+        else:
+            print("Wrong answer from {} - Right answers {}".format(
+                participant, right_answers_count))
         answer = Answer(
             **{
                 "problem": problem,
@@ -49,6 +44,17 @@ def participant_answering(participant, participant_group, problem, variant):
                 "date": timezone.now(),
             })
         answer.save()
+    else:
+        print("{} is trying to change answer {} to {}".format(
+            participant, old_answers[0].answer, variant))
+        logging.info("{} is trying to change answer {} to {}".format(
+            participant, old_answers[0].answer, variant))
+        if bot:
+            bot.send_message(
+                participant_group,
+                'Dear {}, you can\'t change your answer.'.format(
+                    participant.name),
+                reply_to_message_id=message['message_id'] if message else None)
 
 
 available_entities = {
@@ -277,8 +283,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         bot.send_message(
                             participant_group,
                             "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard"                                                                         .
-                            format(
+                            \nFor more information contact with @KoStard".format(
                                 participant.name,
                                 entities_check_resp["cause"],
                                 ", ".join("{} - {}".format(
@@ -308,7 +313,7 @@ def update_bot(bot: Bot, *, timeout=60):
                     bot.send_message(
                         participant_group,
                         "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                        \nFor more information contact with @KoStard"                                                                     .format(
+                        \nFor more information contact with @KoStard".format(
                             participant.name,
                             ', '.join(message_bindings_check_resp["cause"]),
                             ", ".join("{} - {}".format(
@@ -321,7 +326,10 @@ def update_bot(bot: Bot, *, timeout=60):
                         reply_to_message_id=message["message_id"],
                     )
                     bot.delete_message(participant_group, message["message_id"])
-                    groupspecificparticipantdata.create_violation(get_from_Model(ViolationType, value='message_binding_low_permissions'))
+                    groupspecificparticipantdata.create_violation(
+                        get_from_Model(
+                            ViolationType,
+                            value='message_binding_low_permissions'))
                     bot.offset = update["update_id"] + 1
                     bot.save()
                     continue
@@ -333,9 +341,13 @@ def update_bot(bot: Bot, *, timeout=60):
                                            ord("E") + 1)):
                     if participant_group.activeProblem and BotBinding.objects.filter(
                             bot=bot, participant_group=participant_group):
-                        participant_answering(participant, participant_group,
-                                              participant_group.activeProblem,
-                                              text)
+                        participant_answering(
+                            participant,
+                            participant_group,
+                            participant_group.activeProblem,
+                            text,
+                            bot=bot,
+                            message=message)
                 elif text[0] == "/" and len(text) > 1:
                     command = text[1:].split(" ")[0].split('@')[0]
                     if command in available_commands:
@@ -368,7 +380,7 @@ def update_bot(bot: Bot, *, timeout=60):
                             bot.send_message(
                                 participant_group,
                                 'Sorry dear {}, you don\'t have permission to use \
-                                command {} - your highest role is "{}".'                                                                        .format(
+                                command {} - your highest role is "{}".'.format(
                                     participant, command,
                                     max_priority_role.name),
                                 reply_to_message_id=message["message_id"],
