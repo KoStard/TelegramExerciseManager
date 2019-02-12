@@ -62,7 +62,7 @@ class Problem(models.Model):
             self.index, ("\nFrom chapter: #{}".format(self.chapter)
                          if self.chapter else ''), self.formulation,
             self.variant_a, self.variant_b, self.variant_c, self.variant_d,
-            self.variant_e, (None if self.has_next else '\n#last'))
+            self.variant_e, ('' if self.has_next else '\n#last'))
 
     def get_answer(self):
         """ Is generating problem answer formulation to publish """
@@ -486,16 +486,25 @@ class GroupSpecificParticipantData(models.Model):
     @property
     def highest_role_binding(self):
         """ Will return user's highest role binding in the group """
-        res = Role.objects.get(value='guest')
+        from main.models import ParticipantGroupBinding
+        res = ParticipantGroupBinding(groupspecificparticipantdata = self, role=Role.objects.get(value='guest'))
         for binding in self.participantgroupbinding_set.all():
             if not res or binding.role.priority_level > res.role.priority_level:
                 res = binding
         return res
 
     @property
+    def highest_role(self):
+        """ Will return user's highest role in the group """
+        return self.highest_role_binding.role or Role.objects.get(value='guest')
+
+    @property
     def highest_standard_role_binding(self):
         """ Will return user's highest standard role binding in the group """
-        res = Role.objects.get(value='guest')
+        from main.models import ParticipantGroupBinding
+        res = ParticipantGroupBinding(
+            groupspecificparticipantdata=self,
+            role=Role.objects.get(value='guest'))
         for binding in self.participantgroupbinding_set.filter(
                 role__from_stardard_kit=True):
             if not res or binding.role.priority_level > res.role.priority_level:
@@ -568,6 +577,11 @@ class ParticipantGroupBinding(models.Model):
         return '{}-{{{}}}->{}'.format(
             self.groupspecificparticipantdata.participant, self.role.name,
             self.groupspecificparticipantdata.participant_group)
+
+    def save(self, *args, **kwargs):
+        if self.role.value == 'guest':
+            return
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Participant-Group Binding'
