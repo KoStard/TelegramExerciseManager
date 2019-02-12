@@ -290,7 +290,8 @@ def update_bot(bot: Bot, *, timeout=60):
                         bot.send_message(
                             participant_group,
                             "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard".format(
+                            \nFor more information contact with @KoStard".
+                            format(
                                 participant.name,
                                 entities_check_resp["cause"],
                                 ", ".join("{} - {}".format(
@@ -442,12 +443,17 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
                 caption="Image of problem N{}.".format(problem.index),
             )
             logging.debug("Sending image for problem {}".format(problem.index))
+            adm_log(
+                bot, participant_group, "Sent image {} for problem N{}".format(
+                    problem.img, problem.index))
         except Exception as e:
             print("Can't send image {}".format(problem.img))
             print(e)
             logging.info(e)
-            adm_log("Can't send image {} for problem N{}".format(
-                problem.img, problem.index))
+            adm_log(
+                bot, participant_group,
+                "Can't send image {} for problem N{}".format(
+                    problem.img, problem.index))
     participant_group.activeProblem = problem
     participant_group.save()
     participant_group.activeSubjectGroupBinding.last_problem = problem
@@ -628,7 +634,8 @@ def root_test(bot: Bot, administrator_page: AdministratorPage, text: str,
     bot.send_image(
         administrator_page,
         open('../media/images/Photos/image005.png', 'rb'),
-        reply_to_message_id=message['message_id']) # Is working, so the bug with image sending is solved.
+        reply_to_message_id=message['message_id']
+    )  # Is working, so the bug with image sending is solved.
 
 
 #- (function, min_priority_level, needs_binding)
