@@ -9,6 +9,12 @@ import logging
 # configure_logging()
 
 
+def adm_log(bot: Bot, participant_group: ParticipantGroup, message: str):
+    """ Will log to the administrator page if available """
+    if hasattr(participant_group, 'administratorpage'):
+        bot.send_message(participant_group.administratorpage, message)
+
+
 def participant_answering(participant, participant_group, problem, variant, *,
                           bot, message):
     """ Call this function when the user is answering
@@ -272,10 +278,9 @@ def update_bot(bot: Bot, *, timeout=60):
 
             entities = message.get("entities")
 
-            if hasattr(participant_group, 'administratorpage'):
-                bot.send_message(
-                    participant_group.administratorpage, "{} -> {}".format(
-                        participant.name, text or entities))
+            adm_log(bot, participant_group, "{} -> {}".format(
+                participant.name, text or entities))
+
             if entities:
                 entities_check_resp = check_entities(
                     bot, participant_group, participant, entities, message)
@@ -285,8 +290,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         bot.send_message(
                             participant_group,
                             "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard"                                                                                                                                                  .
-                            format(
+                            \nFor more information contact with @KoStard".format(
                                 participant.name,
                                 entities_check_resp["cause"],
                                 ", ".join("{} - {}".format(
@@ -316,7 +320,7 @@ def update_bot(bot: Bot, *, timeout=60):
                     bot.send_message(
                         participant_group,
                         "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                        \nFor more information contact with @KoStard"                                                                                                                                          .format(
+                        \nFor more information contact with @KoStard".format(
                             participant.name,
                             ', '.join(message_bindings_check_resp["cause"]),
                             ", ".join("{} - {}".format(
@@ -354,7 +358,7 @@ def update_bot(bot: Bot, *, timeout=60):
                 elif text[0] == "/" and len(text) > 1:
                     command = text[1:].split(" ")[0].split('@')[0]
                     if command in available_commands:
-                        max_priority_role = groupspecificparticipantdata.highest_role_binding
+                        max_priority_role = groupspecificparticipantdata.highest_role
                         priority_level = max_priority_role.priority_level
                         if priority_level >= available_commands[command][1]:
                             if available_commands[command][2]:
@@ -375,7 +379,7 @@ def update_bot(bot: Bot, *, timeout=60):
                             bot.send_message(
                                 participant_group,
                                 'Sorry dear {}, you don\'t have permission to use \
-                                command {} - your highest role is "{}".'                                                                                                                                                .format(
+                                command {} - your highest role is "{}".'.format(
                                     participant, command,
                                     max_priority_role.name),
                                 reply_to_message_id=message["message_id"],
@@ -407,7 +411,7 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
     if len(text.split()) > 1:
         index = int(text.split()[1])
         try:
-            problem = participant_group.activeSubjectGroupBinding.subject.problem_set.get(
+            problem: Problem = participant_group.activeSubjectGroupBinding.subject.problem_set.get(
                 index=index)
         except Problem.DoesNotExist:
             bot.send_message(
@@ -417,7 +421,7 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
             )
             return
     else:
-        problem = participant_group.activeSubjectGroupBinding.last_problem.next
+        problem: Problem = participant_group.activeSubjectGroupBinding.last_problem.next
         if not problem:
             bot.send_message(
                 participant_group,
@@ -432,8 +436,9 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
         try:
             bot.send_image(
                 participant_group,
-                open("media/" + problem.img.name, "rb"),
-                # reply_to_message_id=form_resp[0].get("message_id"), # Temporarily disabling
+                open("../media/" + problem.img.name, "rb"),
+                reply_to_message_id=form_resp[0].get(
+                    "message_id"),  # Temporarily disabling
                 caption="Image of problem N{}.".format(problem.index),
             )
             logging.debug("Sending image for problem {}".format(problem.index))
@@ -441,6 +446,8 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
             print("Can't send image {}".format(problem.img))
             print(e)
             logging.info(e)
+            adm_log("Can't send image {} for problem N{}".format(
+                problem.img, problem.index))
     participant_group.activeProblem = problem
     participant_group.save()
     participant_group.activeSubjectGroupBinding.last_problem = problem
@@ -504,8 +511,7 @@ def cancel_problem(bot: Bot, participant_group: ParticipantGroup, text: str,
         ]
         for answer in answers:
             answer.destroy()
-        participant_group.activeSubjectGroupBinding.last_problem = participant_group.activeProblem.previous(
-        )
+        participant_group.activeSubjectGroupBinding.last_problem = participant_group.activeProblem.previous
         participant_group.activeSubjectGroupBinding.save()
         participant_group.activeProblem = None
         participant_group.save()
@@ -615,6 +621,16 @@ def status_in_administrator_page(bot: Bot,
         reply_to_message_id=message['message_id'])
 
 
+def root_test(bot: Bot, administrator_page: AdministratorPage, text: str,
+              message: dict) -> None:
+    """ This is used for some root testings of the bot """
+    ### Now will be used for image sending test
+    bot.send_image(
+        administrator_page,
+        open('../media/images/Photos/image005.png', 'rb'),
+        reply_to_message_id=message['message_id']) # Is working, so the bug with image sending is solved.
+
+
 #- (function, min_priority_level, needs_binding)
 available_commands = {
     "send": (send_problem, 6, True),
@@ -625,11 +641,12 @@ available_commands = {
     "add_subject": (add_subject, 9, True),
     "select_subject": (select_subject, 9, True),
     "finish_subject": (finish_subject, 9, True),
-    "score": (get_score, 0, True),
+    # "score": (get_score, 0, True), # Stopping this, because participants can see their scores in the leaderboard
     "report": (report, 2, True),
     "start_admin": (start_in_administrator_page, 'superadmin', False),
     "stop_admin": (stop_in_administrator_page, 'superadmin', True),
     "status": (status_in_administrator_page, 'superadmin', True),
+    "root_test": (root_test, 'superadmin', True),
 }
 
 
