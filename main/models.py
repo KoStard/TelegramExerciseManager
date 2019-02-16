@@ -40,7 +40,7 @@ class Subject(models.Model):
 
 
 class Problem(models.Model):
-    """ Problem model """
+    """ Problem model -> for now has fixed variants - A, B, C, D, E """
 
     index = models.IntegerField(null=True, blank=True)
     formulation = models.CharField(max_length=1500)
@@ -182,12 +182,44 @@ class Group(models.Model):
         db_table = 'db_group'
 
 
+class ParticipantGroupPlayingModePrincipal(models.Model):
+    """ Participant Group Playing Mode Principal Model """
+    name = models.CharField(max_length=50)
+    value = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
+    class Meta:
+        verbose_name = 'Participant Group Playing Mode Principal'
+        db_table = 'db_participant_group_playing_mode_principal'
+
+
+class ParticipantGroupPlayingMode(models.Model):
+    """ Participant Group Playing Mode Model """
+    name = models.CharField(max_length=50)
+    value = models.CharField(max_length=50)
+    principal = models.ForeignKey(
+        ParticipantGroupPlayingModePrincipal,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True)
+    data = models.CharField(max_length=50, blank=True, null=True)
+
+    def __str__(self):
+        return '{} -[{}]-> {}'.format(self.name, self.principal, self.data)
+
+    class Meta:
+        verbose_name = 'Participant Group  Playing Mode'
+        db_table = 'db_participant_group_playing_mode'
+
+
 class ParticipantGroup(Group):
     """ Participant Group model """
     activeProblem = models.ForeignKey(
         Problem, on_delete=models.CASCADE, blank=True, null=True)
     activeSubjectGroupBinding = models.ForeignKey(
         'SubjectGroupBinding', on_delete=models.CASCADE, blank=True, null=True)
+    playingMode = models.ForeignKey(ParticipantGroupPlayingMode, on_delete=models.CASCADE)
 
     def get_administrator_page(self):
         """ Will return administrator page if available """
@@ -203,7 +235,20 @@ class ParticipantGroup(Group):
             "type",
             ("active_problem", "self.activeProblem.index"),
             ("active_subject_group_binding", "self.activeSubjectGroupBinding"),
+            "playingMode"
         )
+
+    def __str__(self):
+        return '[{}] {} -[{}::{}]-> {}'.format(
+            self.type.name, self.title or self.username, self.playingMode,
+            safe_getter(self, 'activeSubjectGroupBinding.subject', default=''),
+            safe_getter(self, 'activeProblem.index', default=''))
+
+    def save(self, *args, **kwargs):
+        if not self.playingMode:
+            self.playingMode = ParticipantGroupPlayingMode.objects.get(value='default')
+        super().save(*args, **kwargs)
+
 
     class Meta:
         verbose_name = 'Participant Group'

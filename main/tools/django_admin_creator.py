@@ -15,7 +15,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE",
 
 django.setup()
 
-res_init = """from django.contrib import admin\n"""
+res_init = """from django.contrib import admin
+from main.universals import safe_getter
+"""
 model_admin_template_with_fields =\
 """@admin.register({ModelName})
 class {ModelName}Admin(admin.ModelAdmin):
@@ -28,7 +30,7 @@ class {ModelName}Admin(admin.ModelAdmin):
     pass\n\n"""
 getter_template = """\
     def {GetterName}(current, self):
-        return {Getter}
+        return safe_getter(self, '{Getter}')
     {GetterName}.admin_order_field = "{GetterOrdering}"\n\n"""
 
 # registration_template = """admin.site.register({ModelName}, {ModelName}Admin)\n"""

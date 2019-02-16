@@ -47,11 +47,11 @@ def configure_logging():
 
 
 #- Working for related objects too
-def safe_getter(obj, attr):
-    """ Use this function to get attributes without fear of throwing exception """
-    if not obj or not hasattr(obj, attr):
-        return None
-    return getattr(obj, attr)
+# def safe_getter(obj, attr):
+#     """ Use this function to get attributes without fear of throwing exception """
+#     if not obj or not hasattr(obj, attr):
+#         return None
+#     return getattr(obj, attr)
 
 
 def get_from_Model(Model, **kwargs):
@@ -60,3 +60,19 @@ def get_from_Model(Model, **kwargs):
         return Model.objects.get(**kwargs)
     except Model.DoesNotExist:
         return None
+
+
+def safe_getter(model: object, path: str, default=None):
+    """ Will give the result if available, otherwise will return default
+     - model will be an instance 
+     - path can start with self"""
+    path = path.split('.')
+    if path[0] == 'self':
+        path = path[1:]
+    current = model
+    for step in path:
+        if hasattr(current, step):
+            current = getattr(current, step)
+        else:
+            return default
+    return current

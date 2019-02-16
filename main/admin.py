@@ -1,4 +1,5 @@
 from django.contrib import admin
+from main.universals import safe_getter
 from main.models import *
 
 
@@ -48,6 +49,24 @@ class GroupAdmin(admin.ModelAdmin):
     )
 
 
+@admin.register(ParticipantGroupPlayingModePrincipal)
+class ParticipantGroupPlayingModePrincipalAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "value",
+    )
+
+
+@admin.register(ParticipantGroupPlayingMode)
+class ParticipantGroupPlayingModeAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "value",
+        "principal",
+        "data",
+    )
+
+
 @admin.register(ParticipantGroup)
 class ParticipantGroupAdmin(admin.ModelAdmin):
     list_display = (
@@ -57,15 +76,16 @@ class ParticipantGroupAdmin(admin.ModelAdmin):
         "type",
         "active_problem",
         "active_subject_group_binding",
+        "playingMode",
     )
 
     def active_problem(current, self):
-        return self.activeProblem.index
+        return safe_getter(self, 'self.activeProblem.index')
 
     active_problem.admin_order_field = "activeProblem__index"
 
     def active_subject_group_binding(current, self):
-        return self.activeSubjectGroupBinding
+        return safe_getter(self, 'self.activeSubjectGroupBinding')
 
     active_subject_group_binding.admin_order_field = "activeSubjectGroupBinding"
 
@@ -192,12 +212,13 @@ class AnswerAdmin(admin.ModelAdmin):
     )
 
     def Problem(current, self):
-        return self.problem.index
+        return safe_getter(self, 'self.problem.index')
 
     Problem.admin_order_field = "problem__index"
 
     def Answer(current, self):
-        return self.answer.upper() if self.answer else '-'
+        return safe_getter(self,
+                           'self.answer.upper() if self.answer else ' - '')
 
     Answer.admin_order_field = "answer__upper() if self__answer else '-'"
 
@@ -211,7 +232,7 @@ class SubjectGroupBindingAdmin(admin.ModelAdmin):
     )
 
     def Last_problem(current, self):
-        return self.last_problem.index
+        return safe_getter(self, 'self.last_problem.index')
 
     Last_problem.admin_order_field = "last_problem__index"
 
