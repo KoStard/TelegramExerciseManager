@@ -59,7 +59,7 @@ class Problem(models.Model):
 
     def __str__(self):
         return """\\<b>#Problem N{}\\</b>{}\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}{}""".format(
-            self.index, ("\nFrom chapter: #{}".format(self.chapter)
+            self.index, ("\nFrom chapter: #{}".format(self.chapter.replace(' ', '_'))
                          if self.chapter else ''), self.formulation,
             self.variant_a, self.variant_b, self.variant_c, self.variant_d,
             self.variant_e, ('' if self.has_next else '\n#last'))
@@ -112,7 +112,7 @@ class Problem(models.Model):
     @property
     def next(self):
         """ Will return next problem if available """
-        if self.index < len(self.subject):
+        if self.subject and self.index < len(self.subject):
             n = self.subject.problem_set.filter(index=self.index + 1)
             if n:
                 return n[0]
@@ -120,12 +120,12 @@ class Problem(models.Model):
     @property
     def has_next(self):
         """ Will check if has next problem """
-        return self.index < len(self.subject)
+        return self.subject and self.index < len(self.subject)
 
     @property
     def previous(self):
         """ Will return previous problem if available """
-        if self.index > 1:
+        if self.subject and self.index > 1:
             n = self.subject.problem_set.filter(index=self.index - 1)
             if n:
                 return n[0]
@@ -147,6 +147,23 @@ class Problem(models.Model):
     class Meta:
         verbose_name = 'Problem'
         db_table = 'db_problem'
+
+
+class ParticipantDefinedProblem(Problem):
+    """ Participant-defined problem """
+    participant = models.ForeignKey('Participant', on_delete=models.CASCADE)
+    problem_name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return """\\<b>#User_Defined_Problem {} - From #{}\\</b>\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}""".format(
+            self.problem_name, self.participant.name.replace(' ', '_'), self.formulation,
+            self.variant_a, self.variant_b, self.variant_c, self.variant_d,
+            self.variant_e)
+
+    class Meta:
+        verbose_name = 'Participant-defined Problem'
+        db_table = 'db_problem_participant_defined'
+
 
 
 class GroupType(models.Model):
