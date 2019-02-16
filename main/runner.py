@@ -128,7 +128,10 @@ if __name__ == '__main__':
         print("*****************--IN THE TESTING MODE--*****************")
         bots = Bot.objects.filter(for_testing=True)
         testing = True
+    elif len(sys.argv) > 1 and sys.argv[1] == '--all':
+        print("*****************--IN THE GLOBAL MODE--*****************")
+        bots = Bot.objects.all()
     else:
         print("*****************--IN THE STANDARD MODE--*****************")
-        bots = Bot.objects.all()
+        bots = Bot.objects.filter(for_testing=False)
     run(bots, testing=testing)
