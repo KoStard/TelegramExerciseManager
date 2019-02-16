@@ -145,6 +145,7 @@ class BotAdmin(admin.ModelAdmin):
         "token",
         "offset",
         "last_updated",
+        "for_testing",
     )
 
 

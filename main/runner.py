@@ -46,13 +46,13 @@ from django.utils import timezone
 from main.worker import *
 from django.core.management import call_command
 
-bots = Bot.objects.all()
 running = True
 file_checks = 0
 
-
-def run():
+autorestart = True
+def run(bots, *, testing=False):
     """ Will run main cycle and continuously load updates of bots """
+    global autorestart
     print("Ready.")
     for bot in bots:
         for binding in bot.botbinding_set.all():
@@ -86,28 +86,27 @@ def run():
                 return
 
     def update(bot):
-        global running, file_checks
+        global running, file_checks, autorestart
+        
         while running:
             if file_checks % 20 < 2:
-                if get_listening_files() != WATCHED_FILES:
+                if get_listening_files() != WATCHED_FILES and autorestart and platform.system() != 'Windows':
                     running = False
                     return
 
             file_checks += 1
             for f, mtime in WATCHED_FILES_MTIMES:
-                if getmtime(f) != mtime:
+                if getmtime(f) != mtime and autorestart and platform.system() != 'Windows':
                     running = False
                     print("Found changed file!")
                     return
-            try:
-                if running:
-                    sleep(0.5)
-                    # update_bot(bot)
-            except Exception as e:
-                logging.warning("ERROR: {}".format(e))
-                time.sleep(1)
+            # try:
+            if running:
+                update_bot(bot)
+            # except Exception as e:
+            #     logging.warning("ERROR: {}".format(e))
+            #     time.sleep(1)
 
-    autorestart = True
     ts = []
     for bot in bots:
         t = Thread(target=update, args=(bot,))
@@ -126,4 +125,12 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
+    testing = False
+    if len(sys.argv) > 1 and sys.argv[1] == '--test':
+        print("*****************--IN THE TESTING MODE--*****************")
+        bots = Bot.objects.filter(for_testing=True)
+        testing = True
+    else:
+        # bots = Bot.objects.all()
+        pass
+    run(bots, testing=testing)

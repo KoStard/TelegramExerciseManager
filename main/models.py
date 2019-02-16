@@ -320,9 +320,9 @@ class User(models.Model):
 
     def update_from_telegram_dict(self, user: dict):
         """ Will update username, first_name and last_name from given user dict """
-        self.username = dict.get('username')
-        self.first_name = dict.get('first_name')
-        self.last_name = dict.get('last_name')
+        self.username = user.get('username')
+        self.first_name = user.get('first_name')
+        self.last_name = user.get('last_name')
         self.save()
 
     def __str__(self):
@@ -334,10 +334,13 @@ class User(models.Model):
 
 
 class Bot(User):
-    """ Bot model """
+    """ Bot model 
+     - for_testing - if is True, will be used in testing mode
+    """
     token = models.CharField(max_length=50)
     offset = models.IntegerField(default=0)
     last_updated = models.DateTimeField(blank=True, null=True)
+    for_testing = models.BooleanField(default=False)
 
     @property
     def base_url(self):

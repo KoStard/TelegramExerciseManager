@@ -165,12 +165,13 @@ def update_bot(bot: Bot, *, timeout=60):
                 message["chat"].get("title"),
                 bot,
                 message.get("text") or
-                ("New chat member" if message.get("new_chat_members") and
-                 len(message['new_chat_members']) == 1 and
-                 message['new_chat_members'][0]['id'] == participant.id else
-                 'Invited {}'.format(', '.join(
-                     user['first_name'] or user['last_name'] or user['username']
-                     for user in message['new_chat_members']))) or
+                (("New chat member" if len(message['new_chat_members']) == 1 and
+                  message['new_chat_members'][0]['id'] == participant.id else
+                  'Invited {}'.format(', '.join(
+                      user['first_name'] or user['last_name'] or
+                      user['username']
+                      for user in message.get('new_chat_members'))))
+                 if 'new_chat_members' in message else '') or
                 (', '.join(key for key in AVAILABLE_MESSAGE_BINDINGS.keys()
                            if message.get(key))) or "|UNKNOWN|",
             ))
@@ -181,12 +182,14 @@ def update_bot(bot: Bot, *, timeout=60):
                 message["from"].get("last_name"),
                 message["chat"].get("title"),
                 bot,
-                message.get("text") or ("New chat member" if message.get("new_chat_members") and
-                 len(message['new_chat_members']) == 1 and
-                 message['new_chat_members'][0]['id'] == participant.id else
-                 'Invited {}'.format(', '.join(
-                     user['first_name'] or user['last_name'] or user['username']
-                     for user in message['new_chat_members']))) or
+                message.get("text") or
+                (("New chat member" if len(message['new_chat_members']) == 1 and
+                  message['new_chat_members'][0]['id'] == participant.id else
+                  'Invited {}'.format(', '.join(
+                      user['first_name'] or user['last_name'] or
+                      user['username']
+                      for user in message.get('new_chat_members'))))
+                 if 'new_chat_members' in message else '') or
                 (', '.join(key for key in AVAILABLE_MESSAGE_BINDINGS.keys()
                            if message.get(key))) or message,
             ))
@@ -300,19 +303,19 @@ def update_bot(bot: Bot, *, timeout=60):
             adm_log(
                 bot, participant_group, "{} -> {}".format(
                     participant.name,
-                    (text +
-                     ('' if not entities else 'Found entities: ' + ', '.join(
-                         [entity.type for entity in (entities or [])]))) or
+                    ((text or '') +
+                     ('' if not entities else '\nFound entities: ' + ', '.join(
+                         entity['type'] for entity in entities))) or
                     ', '.join(message_binding
                               for message_binding in AVAILABLE_MESSAGE_BINDINGS
                               if message_binding in message) or
-                    ("New chat member" if message.get("new_chat_members") and
-                     len(message['new_chat_members']) == 1 and
-                     message['new_chat_members'][0]['id'] == participant.id else
-                     'Invited {}'.format(', '.join(
-                         user['first_name'] or user['last_name'] or
-                         user['username']
-                         for user in message['new_chat_members'])))))
+                    (("New chat member" if len(message['new_chat_members']) == 1
+                      and message['new_chat_members'][0]['id'] == participant.id
+                      else 'Invited {}'.format(', '.join(
+                          user['first_name'] or user['last_name'] or
+                          user['username']
+                          for user in message.get('new_chat_members'))))
+                     if 'new_chat_members' in message else '')))
 
             """ Processing entities of message """
             if entities:
