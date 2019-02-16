@@ -51,16 +51,28 @@ def participant_answering(participant, participant_group, problem, variant, *,
             })
         answer.save()
     else:
-        print("{} is trying to change answer {} to {}".format(
-            participant, old_answers[0].answer, variant))
-        logging.info("{} is trying to change answer {} to {}".format(
-            participant, old_answers[0].answer, variant))
-        if bot:
-            bot.send_message(
-                participant_group,
-                'Dear {}, you can\'t change your answer.'.format(
-                    participant.name),
-                reply_to_message_id=message['message_id'] if message else None)
+        if old_answers[0].answer.lower() == variant.lower():
+            # Sending same answer again
+            print("{} is trying to answer {} again".format(
+                participant, variant))
+            logging.info("{} is trying to answer {} again".format(
+                participant, variant))
+            if bot and message:  # Will just remove the message
+                # This can lead to problems -> Can think that there is a problem with telegram
+                bot.delete_message(
+                    participant_group,
+                    message['message_id'])
+        else:
+            print("{} is trying to change answer {} to {}".format(
+                participant, old_answers[0].answer, variant))
+            logging.info("{} is trying to change answer {} to {}".format(
+                participant, old_answers[0].answer, variant))
+            if bot:
+                bot.send_message(
+                    participant_group,
+                    'Dear {}, you can\'t change your answer.'.format(
+                        participant.name),
+                    reply_to_message_id=message['message_id'] if message else None)
 
 
 AVAILABLE_ENTITIES = {
@@ -327,7 +339,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         bot.send_message(
                             participant_group,
                             "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard".
+                            \nFor more information contact with @KoStard"                                                                                                                                                  .
                             format(
                                 participant.name,
                                 entities_check_resp["cause"],
@@ -363,7 +375,7 @@ def update_bot(bot: Bot, *, timeout=60):
                     bot.send_message(
                         participant_group,
                         "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                        \nFor more information contact with @KoStard".format(
+                        \nFor more information contact with @KoStard"                                                                                                                                          .format(
                             participant.name,
                             ', '.join(message_bindings_check_resp["cause"]),
                             ", ".join("{} - {}".format(
@@ -426,7 +438,7 @@ def update_bot(bot: Bot, *, timeout=60):
                             bot.send_message(
                                 participant_group,
                                 'Sorry dear {}, you don\'t have permission to use \
-                                command {} - your highest role is "{}".'.format(
+                                command {} - your highest role is "{}".'                                                                                                                                                .format(
                                     participant, command,
                                     max_priority_role.name),
                                 reply_to_message_id=message["message_id"],
