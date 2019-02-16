@@ -178,7 +178,7 @@ def update_bot(bot: Bot, *, timeout=60):
                 bot,
                 message.get("text") or
                 (("New chat member" if len(message['new_chat_members']) == 1 and
-                  message['new_chat_members'][0]['id'] == participant.id else
+                  message['new_chat_members'][0]['id'] == message['from']['id'] else
                   'Invited {}'.format(', '.join(
                       user['first_name'] or user['last_name'] or
                       user['username']
@@ -196,7 +196,7 @@ def update_bot(bot: Bot, *, timeout=60):
                 bot,
                 message.get("text") or
                 (("New chat member" if len(message['new_chat_members']) == 1 and
-                  message['new_chat_members'][0]['id'] == participant.id else
+                  message['new_chat_members'][0]['id'] == message['from']['id'] else
                   'Invited {}'.format(', '.join(
                       user['first_name'] or user['last_name'] or
                       user['username']
@@ -339,7 +339,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         bot.send_message(
                             participant_group,
                             "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard"                                                                                                                                                  .
+                            \nFor more information contact with @KoStard".
                             format(
                                 participant.name,
                                 entities_check_resp["cause"],
@@ -375,7 +375,7 @@ def update_bot(bot: Bot, *, timeout=60):
                     bot.send_message(
                         participant_group,
                         "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                        \nFor more information contact with @KoStard"                                                                                                                                          .format(
+                        \nFor more information contact with @KoStard".format(
                             participant.name,
                             ', '.join(message_bindings_check_resp["cause"]),
                             ", ".join("{} - {}".format(
@@ -438,7 +438,7 @@ def update_bot(bot: Bot, *, timeout=60):
                             bot.send_message(
                                 participant_group,
                                 'Sorry dear {}, you don\'t have permission to use \
-                                command {} - your highest role is "{}".'                                                                                                                                                .format(
+                                command {} - your highest role is "{}".'.format(
                                     participant, command,
                                     max_priority_role.name),
                                 reply_to_message_id=message["message_id"],
@@ -648,6 +648,31 @@ def report(bot, participant_group, text, message):
     pass
 
 
+USER_DEFINED_PROBLEM_TEMPLATE = r"""Name-.+
+Definition-.+
+Variant a-.+
+Variant b-.+
+Variant c-.+
+Variant d-.+
+Variant e-.+
+Right variant-[abcdeABCDE]"""
+
+USER_DEFINED_PROBLEM_TEMPLATE_READABLE = r"""Name-[WRITE HERE YOUR TEXT]
+Definition-[WRITE HERE YOUR TEXT]
+Variant a-[WRITE HERE YOUR TEXT]
+Variant b-[WRITE HERE YOUR TEXT]
+Variant c-[WRITE HERE YOUR TEXT]
+Variant d-[WRITE HERE YOUR TEXT]
+Variant e-[WRITE HERE YOUR TEXT]
+Right variant-[abcdeABCDE]"""
+
+
+def add_user_defined_problem(bot: Bot, participant_group: ParticipantGroup, text: str,
+                   message: dict):
+    """ Add User-defined Problem """
+    pass
+
+
 def start_in_administrator_page(bot: Bot, message):
     """ Will save administrator page """
     administrator_page = AdministratorPage(
@@ -719,6 +744,7 @@ available_commands = {
     "finish_subject": (finish_subject, 9, True),
     # "score": (get_score, 0, True), # Stopping this, because participants can see their scores in the leaderboard
     "report": (report, 2, True),
+    "add_special_problem": (add_user_defined_problem, 4, True),
     "start_admin": (start_in_administrator_page, 'superadmin', False),
     "stop_admin": (stop_in_administrator_page, 'superadmin', True),
     "status": (status_in_administrator_page, 'superadmin', True),
