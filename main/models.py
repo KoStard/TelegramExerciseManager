@@ -244,6 +244,13 @@ class User(models.Model):
         else:
             return self.username
 
+    def update_from_telegram_dict(self, user: dict):
+        """ Will update username, first_name and last_name from given user dict """
+        self.username = dict.get('username')
+        self.first_name = dict.get('first_name')
+        self.last_name = dict.get('last_name')
+        self.save()
+
     def __str__(self):
         return '{}'.format(self.name)
 
