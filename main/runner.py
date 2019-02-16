@@ -22,7 +22,7 @@ from os.path import getmtime
 def get_listening_files(base=None):
     res = []
     if not base:
-        base = os.path.abspath(os.path.dirname(__file__)+ '/../..')
+        base = os.path.abspath(os.getcwd()+ '/../..')
     for fl in os.listdir(base):
         current = os.path.join(base, fl)
         if os.path.isfile(current):
@@ -53,7 +53,6 @@ autorestart = True
 def run(bots, *, testing=False):
     """ Will run main cycle and continuously load updates of bots """
     global autorestart
-    print("Ready.")
     for bot in bots:
         for binding in bot.botbinding_set.all():
             adm_p = binding.participant_group.get_administrator_page()
@@ -87,7 +86,6 @@ def run(bots, *, testing=False):
 
     def update(bot):
         global running, file_checks, autorestart
-        
         while running:
             if file_checks % 20 < 2:
                 if get_listening_files() != WATCHED_FILES and autorestart and platform.system() != 'Windows':
@@ -131,6 +129,6 @@ if __name__ == '__main__':
         bots = Bot.objects.filter(for_testing=True)
         testing = True
     else:
-        # bots = Bot.objects.all()
-        pass
+        print("*****************--IN THE STANDARD MODE--*****************")
+        bots = Bot.objects.all()
     run(bots, testing=testing)
