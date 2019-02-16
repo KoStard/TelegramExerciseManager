@@ -6,6 +6,11 @@ import django
 import sys
 import os
 import json
+try:
+    from yapf.yapflib.yapf_api import FormatCode
+    with_yapf = True
+except ModuleNotFoundError:
+    with_yapf = False
 
 sys.path.append(
     "E:/Programming/Python/Django/Telegram Problem Controller/TelegramProblemGenerator/"
@@ -81,6 +86,8 @@ def create(queries):
 
         res += model_admin_template_with_fields.format(
             ModelName=model_data[0], fields=fields, getters=getters)
+    if with_yapf:  # Formatting code with yapf if available
+        res = FormatCode(res)[0].replace(', )', ',)')
     return res
     # for model_data in models:
     #     res += registration_template.format(ModelName=model_data[0])

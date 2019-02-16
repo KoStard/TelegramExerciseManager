@@ -34,6 +34,18 @@ class ProblemAdmin(admin.ModelAdmin):
     )
 
 
+@admin.register(ParticipantDefinedProblem)
+class ParticipantDefinedProblemAdmin(admin.ModelAdmin):
+    list_display = (
+        "problem_name",
+        "participant",
+        "formulation",
+        "right_variant",
+        "img",
+        "value",
+    )
+
+
 @admin.register(GroupType)
 class GroupTypeAdmin(admin.ModelAdmin):
     list_display = ("name",)

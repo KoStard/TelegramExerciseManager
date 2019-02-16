@@ -156,9 +156,21 @@ class ParticipantDefinedProblem(Problem):
 
     def __str__(self):
         return """\\<b>#User_Defined_Problem {} - From #{}\\</b>\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}""".format(
-            self.problem_name, self.participant.name.replace(' ', '_'), self.formulation,
-            self.variant_a, self.variant_b, self.variant_c, self.variant_d,
-            self.variant_e)
+            self.problem_name, self.participant.name.replace(' ', '_'),
+            self.formulation, self.variant_a, self.variant_b, self.variant_c,
+            self.variant_d, self.variant_e)
+
+    @staticmethod
+    def get_list_display():
+        """ Used in the django_admin_creator """
+        return (
+            'problem_name',
+            'participant',
+            'formulation',
+            'right_variant',
+            'img',
+            'value',
+        )
 
     class Meta:
         verbose_name = 'Participant-defined Problem'
