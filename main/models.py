@@ -58,7 +58,7 @@ class Problem(models.Model):
     chapter = models.CharField(max_length=150, null=True, blank=True)
 
     def __str__(self):
-        return """\\<b>#Problem N{}\\</b>{}\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}{}""".format(
+        return """\\<b>#Problem N{}\\</b>{}\n{}\nA. {}\nB. {}\nC. {}\nD. {}\nE. {}{}""".format(
             self.index, ("\nFrom chapter: #{}".format(self.chapter.replace(' ', '_'))
                          if self.chapter else ''), self.formulation,
             self.variant_a, self.variant_b, self.variant_c, self.variant_d,
@@ -155,7 +155,7 @@ class ParticipantDefinedProblem(Problem):
     problem_name = models.CharField(max_length=50)
 
     def __str__(self):
-        return """\\<b>#User_Defined_Problem {} - From #{}\\</b>\n{}\na. {}\nb. {}\nc. {}\nd. {}\ne. {}""".format(
+        return """\\<b>#User_Defined_Problem {} - From #{}\\</b>\n{}\nA. {}\nB. {}\nC. {}\nD. {}\nE. {}""".format(
             self.problem_name, self.participant.name.replace(' ', '_'),
             self.formulation, self.variant_a, self.variant_b, self.variant_c,
             self.variant_d, self.variant_e)
