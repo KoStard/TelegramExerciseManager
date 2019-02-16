@@ -56,6 +56,9 @@ def run():
     print("Ready.")
     for bot in bots:
         for binding in bot.botbinding_set.all():
+            adm_p = binding.participant_group.get_administrator_page()
+            if adm_p:
+                bot.send_message(adm_p, "Started...")
             if binding.participant_group.activeProblem:
                 print('{} - {} - {} -> {} right answers'.format(
                     bot.name, bot.last_updated, binding.participant_group,
