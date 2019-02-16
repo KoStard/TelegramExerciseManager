@@ -475,7 +475,14 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
         except Problem.DoesNotExist:
             bot.send_message(
                 participant_group,
-                'Invalid problem number "{}".',
+                'Invalid problem number "{}".'.format(index),
+                reply_to_message_id=message["message_id"],
+            )
+            return
+        except AttributeError:  # If there is no activeSubjectGroupBinding
+            bot.send_message(
+                participant_group,
+                'There is no active subject for this group.',
                 reply_to_message_id=message["message_id"],
             )
             return
