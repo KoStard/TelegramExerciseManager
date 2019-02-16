@@ -165,7 +165,12 @@ def update_bot(bot: Bot, *, timeout=60):
                 message["chat"].get("title"),
                 bot,
                 message.get("text") or
-                (message.get('new_chat_member') and "New Chat Member") or
+                ("New chat member" if message.get("new_chat_members") and
+                 len(message['new_chat_members']) == 1 and
+                 message['new_chat_members'][0]['id'] == participant.id else
+                 'Invited {}'.format(', '.join(
+                     user['first_name'] or user['last_name'] or user['username']
+                     for user in message['new_chat_members']))) or
                 (', '.join(key for key in AVAILABLE_MESSAGE_BINDINGS.keys()
                            if message.get(key))) or "|UNKNOWN|",
             ))
@@ -176,17 +181,27 @@ def update_bot(bot: Bot, *, timeout=60):
                 message["from"].get("last_name"),
                 message["chat"].get("title"),
                 bot,
-                message.get("text") or message,
+                message.get("text") or ("New chat member" if message.get("new_chat_members") and
+                 len(message['new_chat_members']) == 1 and
+                 message['new_chat_members'][0]['id'] == participant.id else
+                 'Invited {}'.format(', '.join(
+                     user['first_name'] or user['last_name'] or user['username']
+                     for user in message['new_chat_members']))) or
+                (', '.join(key for key in AVAILABLE_MESSAGE_BINDINGS.keys()
+                           if message.get(key))) or message,
             ))
             text = message.get("text")
+
+            """ Checking if the group is REGISTERED 
+             - Otherwise is checking if the participant is superuser, if is not,
+            sending message about bot to the user and suggesting to connect with KoStard
+             - Getting participant_group """
             try:
                 participant_group = ParticipantGroup.objects.get(
                     telegram_id=message["chat"]["id"])
             except ParticipantGroup.DoesNotExist:
-                participant = Participant.objects.filter(
-                    pk=message["from"]["id"])
-                if participant:
-                    participant = participant[0]
+                participant = get_from_Model(
+                    Participant, pk=message["from"]["id"])
                 if participant and safe_getter(participant, 'superadmin'):
                     if text and text[0] == '/':
                         command = text[1:].split(" ")[0].split('@')[0]
@@ -214,6 +229,7 @@ def update_bot(bot: Bot, *, timeout=60):
                 bot.save()
                 continue
 
+            """ Checking if there are new members in the group and registering them """
             if message.get("new_chat_members"):
                 for new_chat_member_data in message["new_chat_members"]:
                     if new_chat_member_data[
@@ -239,6 +255,10 @@ def update_bot(bot: Bot, *, timeout=60):
                                 message["date"],
                                 tz=timezone.get_current_timezone()),
                         }).save()
+
+            """ Getting
+             - participant - with updated data
+             - groupspecificparticipantdata """
             try:
                 participant = Participant.objects.get(pk=message["from"]["id"])
                 groupspecificparticipantdata = participant.groupspecificparticipantdata_set.get(
@@ -269,18 +289,32 @@ def update_bot(bot: Bot, *, timeout=60):
                         "score": 0
                     })
                 groupspecificparticipantdata.save()
+                participant.update_from_telegram_dict(message['from'])
             else:
-                # Updating the participant information when getting an update from him/her
-                participant.username = message["from"].get("username")
-                participant.first_name = message["from"].get("first_name")
-                participant.last_name = message["from"].get("last_name")
-                participant.save()
+                # Updating the participant information when getting an update from that user
+                participant.update_from_telegram_dict(message['from'])
 
             entities = message.get("entities")
 
-            adm_log(bot, participant_group, "{} -> {}".format(
-                participant.name, text or entities))
+            """ Logging to the administrator page """
+            adm_log(
+                bot, participant_group, "{} -> {}".format(
+                    participant.name,
+                    (text +
+                     ('' if not entities else 'Found entities: ' + ', '.join(
+                         [entity.type for entity in (entities or [])]))) or
+                    ', '.join(message_binding
+                              for message_binding in AVAILABLE_MESSAGE_BINDINGS
+                              if message_binding in message) or
+                    ("New chat member" if message.get("new_chat_members") and
+                     len(message['new_chat_members']) == 1 and
+                     message['new_chat_members'][0]['id'] == participant.id else
+                     'Invited {}'.format(', '.join(
+                         user['first_name'] or user['last_name'] or
+                         user['username']
+                         for user in message['new_chat_members'])))))
 
+            """ Processing entities of message """
             if entities:
                 entities_check_resp = check_entities(
                     bot, participant_group, participant, entities, message)
@@ -290,7 +324,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         bot.send_message(
                             participant_group,
                             "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard".
+                            \nFor more information contact with @KoStard"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .
                             format(
                                 participant.name,
                                 entities_check_resp["cause"],
@@ -313,6 +347,8 @@ def update_bot(bot: Bot, *, timeout=60):
                         bot.offset = update["update_id"] + 1
                         bot.save()
                         continue
+            
+            """ Getting and processing message bindings of the message """
             message_bindings_check_resp = check_message_bindings(
                 bot, participant_group, participant, message)
             if not message_bindings_check_resp["status"]:
@@ -321,7 +357,7 @@ def update_bot(bot: Bot, *, timeout=60):
                     bot.send_message(
                         participant_group,
                         "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                        \nFor more information contact with @KoStard".format(
+                        \nFor more information contact with @KoStard"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             .format(
                             participant.name,
                             ', '.join(message_bindings_check_resp["cause"]),
                             ", ".join("{} - {}".format(
@@ -341,7 +377,10 @@ def update_bot(bot: Bot, *, timeout=60):
                     bot.offset = update["update_id"] + 1
                     bot.save()
                     continue
+            
+            """ Processing text of the message if available """
             if text:
+                # Processing variants
                 if len(text) == 1 and (
                         ord(text) in range(ord("a"),
                                            ord("e") + 1) or
@@ -356,6 +395,7 @@ def update_bot(bot: Bot, *, timeout=60):
                             text,
                             bot=bot,
                             message=message)
+                # Processing commands
                 elif text[0] == "/" and len(text) > 1:
                     command = text[1:].split(" ")[0].split('@')[0]
                     if command in available_commands:
@@ -380,7 +420,7 @@ def update_bot(bot: Bot, *, timeout=60):
                             bot.send_message(
                                 participant_group,
                                 'Sorry dear {}, you don\'t have permission to use \
-                                command {} - your highest role is "{}".'.format(
+                                command {} - your highest role is "{}".'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .format(
                                     participant, command,
                                     max_priority_role.name),
                                 reply_to_message_id=message["message_id"],
@@ -396,7 +436,7 @@ def update_bot(bot: Bot, *, timeout=60):
                             'Invalid command "{}"'.format(command),
                             reply_to_message_id=message["message_id"],
                         )
-            participant.save()
+            # participant.save() # Does not make sense saving the participant again here -> Nothing changed
         bot.offset = update["update_id"] + 1
         bot.save()
 
@@ -432,7 +472,7 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
             return
     form_resp = bot.send_message(participant_group, str(problem))
     logging.debug("Sending problem {}".format(problem.index))
-    logging.info(form_resp)
+    logging.debug(form_resp)
     if problem.img and form_resp:
         try:
             bot.send_image(
