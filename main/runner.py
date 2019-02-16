@@ -89,9 +89,8 @@ def run():
         global running, file_checks
         while running:
             if file_checks % 20 < 2:
-                if get_listening_files() != WATCHED_FILES_MTIMES:
+                if get_listening_files() != WATCHED_FILES:
                     running = False
-                    print("File's name or count has been changed.")
                     return
 
             file_checks += 1
