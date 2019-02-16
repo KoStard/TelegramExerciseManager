@@ -346,7 +346,10 @@ def update_bot(bot: Bot, *, timeout=60):
                         groupspecificparticipantdata.create_violation(
                             get_from_Model(
                                 ViolationType,
-                                value='message_entity_low_permissions'))
+                                value='message_entity_low_permissions'),
+                            datetime.fromtimestamp(
+                                message["date"],
+                                tz=timezone.get_current_timezone()))
                         bot.offset = update["update_id"] + 1
                         bot.save()
                         continue
