@@ -213,7 +213,7 @@ class ParticipantGroup(Group):
 class AdministratorPage(Group):
     """ Administrator Page model """
 
-    participant_group = models.OneToOneField(
+    participant_group: ParticipantGroup = models.OneToOneField(
         ParticipantGroup, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):

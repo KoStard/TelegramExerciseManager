@@ -324,7 +324,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         bot.send_message(
                             participant_group,
                             "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .
+                            \nFor more information contact with @KoStard".
                             format(
                                 participant.name,
                                 entities_check_resp["cause"],
@@ -347,7 +347,7 @@ def update_bot(bot: Bot, *, timeout=60):
                         bot.offset = update["update_id"] + 1
                         bot.save()
                         continue
-            
+
             """ Getting and processing message bindings of the message """
             message_bindings_check_resp = check_message_bindings(
                 bot, participant_group, participant, message)
@@ -357,7 +357,7 @@ def update_bot(bot: Bot, *, timeout=60):
                     bot.send_message(
                         participant_group,
                         "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                        \nFor more information contact with @KoStard"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             .format(
+                        \nFor more information contact with @KoStard".format(
                             participant.name,
                             ', '.join(message_bindings_check_resp["cause"]),
                             ", ".join("{} - {}".format(
@@ -377,7 +377,7 @@ def update_bot(bot: Bot, *, timeout=60):
                     bot.offset = update["update_id"] + 1
                     bot.save()
                     continue
-            
+
             """ Processing text of the message if available """
             if text:
                 # Processing variants
@@ -420,7 +420,7 @@ def update_bot(bot: Bot, *, timeout=60):
                             bot.send_message(
                                 participant_group,
                                 'Sorry dear {}, you don\'t have permission to use \
-                                command {} - your highest role is "{}".'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .format(
+                                command {} - your highest role is "{}".'.format(
                                     participant, command,
                                     max_priority_role.name),
                                 reply_to_message_id=message["message_id"],
@@ -661,9 +661,20 @@ def status_in_administrator_page(bot: Bot,
                                  administrator_page: AdministratorPage,
                                  text: str, message: dict) -> None:
     """ Will log the status to the administrator page """
+    answers = administrator_page.participant_group.activeProblem.answer_set.filter(
+        processed=False,
+        group_specific_participant_data__participant_group=administrator_page.
+        participant_group)
+    answers_count = {variant: len([answer for answer in answers if answer.answer.upper() == variant]) for variant in 'ABCDE'}
     bot.send_message(
         administrator_page,
-        'Running',
+        """Running, current status is
+A - {A}
+B - {B}
+C - {C}
+D - {D}
+E - {E}
+For more contact with @KoStard""".format(**answers_count),
         reply_to_message_id=message['message_id'])
 
 
