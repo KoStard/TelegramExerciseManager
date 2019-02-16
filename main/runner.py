@@ -114,12 +114,12 @@ def run(bots, *, testing=False):
     for t in ts:
         t.join()
 
-    call_command('migrate')
-    if autorestart and platform.system() != 'Windows':
+    if autorestart and platform.system() != 'Windows' and not running:
+        call_command('migrate') # Test
         # Restarting the script if on macOS or Linux -> has to be executable -> chmod a+x runner.py
         # Won't match new python files
         print("Migrating...")
-        os.execv(__file__, sys.argv)
+        os.execv(sys.executable,['python3.7']+ sys.argv)
 
 
 if __name__ == '__main__':
