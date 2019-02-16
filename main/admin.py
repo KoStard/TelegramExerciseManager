@@ -6,6 +6,7 @@ from main.models import *
 @admin.register(Discipline)
 class DisciplineAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "name",
         "value",
     )
@@ -14,6 +15,7 @@ class DisciplineAdmin(admin.ModelAdmin):
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "name",
         "value",
         "discipline",
@@ -23,6 +25,7 @@ class SubjectAdmin(admin.ModelAdmin):
 @admin.register(Problem)
 class ProblemAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "index",
         "formulation",
         "right_variant",
@@ -37,6 +40,7 @@ class ProblemAdmin(admin.ModelAdmin):
 @admin.register(ParticipantDefinedProblem)
 class ParticipantDefinedProblemAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "problem_name",
         "participant",
         "formulation",
@@ -48,12 +52,16 @@ class ParticipantDefinedProblemAdmin(admin.ModelAdmin):
 
 @admin.register(GroupType)
 class GroupTypeAdmin(admin.ModelAdmin):
-    list_display = ("name",)
+    list_display = (
+        "id",
+        "name",
+    )
 
 
 @admin.register(Group)
 class GroupAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "telegram_id",
         "username",
         "title",
@@ -64,6 +72,7 @@ class GroupAdmin(admin.ModelAdmin):
 @admin.register(ParticipantGroupPlayingModePrincipal)
 class ParticipantGroupPlayingModePrincipalAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "name",
         "value",
     )
@@ -72,6 +81,7 @@ class ParticipantGroupPlayingModePrincipalAdmin(admin.ModelAdmin):
 @admin.register(ParticipantGroupPlayingMode)
 class ParticipantGroupPlayingModeAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "name",
         "value",
         "principal",
@@ -82,6 +92,7 @@ class ParticipantGroupPlayingModeAdmin(admin.ModelAdmin):
 @admin.register(ParticipantGroup)
 class ParticipantGroupAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "telegram_id",
         "username",
         "title",
@@ -105,6 +116,7 @@ class ParticipantGroupAdmin(admin.ModelAdmin):
 @admin.register(AdministratorPage)
 class AdministratorPageAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "telegram_id",
         "username",
         "title",
@@ -116,6 +128,7 @@ class AdministratorPageAdmin(admin.ModelAdmin):
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "username",
         "first_name",
         "last_name",
@@ -125,6 +138,7 @@ class UserAdmin(admin.ModelAdmin):
 @admin.register(Bot)
 class BotAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "username",
         "first_name",
         "last_name",
@@ -137,6 +151,7 @@ class BotAdmin(admin.ModelAdmin):
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "username",
         "first_name",
         "last_name",
@@ -146,12 +161,16 @@ class ParticipantAdmin(admin.ModelAdmin):
 
 @admin.register(SuperAdmin)
 class SuperAdminAdmin(admin.ModelAdmin):
-    list_display = ("user",)
+    list_display = (
+        "id",
+        "user",
+    )
 
 
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "name",
         "value",
         "priority_level",
@@ -162,6 +181,7 @@ class RoleAdmin(admin.ModelAdmin):
 @admin.register(ScoreThreshold)
 class ScoreThresholdAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "role",
         "range_min",
         "range_max",
@@ -171,6 +191,7 @@ class ScoreThresholdAdmin(admin.ModelAdmin):
 @admin.register(GroupSpecificParticipantData)
 class GroupSpecificParticipantDataAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "participant",
         "participant_group",
         "score",
@@ -181,6 +202,7 @@ class GroupSpecificParticipantDataAdmin(admin.ModelAdmin):
 @admin.register(ViolationType)
 class ViolationTypeAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "name",
         "cost",
         "value",
@@ -190,6 +212,7 @@ class ViolationTypeAdmin(admin.ModelAdmin):
 @admin.register(Violation)
 class ViolationAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "groupspecificparticipantdata",
         "date",
         "type",
@@ -199,6 +222,7 @@ class ViolationAdmin(admin.ModelAdmin):
 @admin.register(ParticipantGroupBinding)
 class ParticipantGroupBindingAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "groupspecificparticipantdata",
         "role",
     )
@@ -207,6 +231,7 @@ class ParticipantGroupBindingAdmin(admin.ModelAdmin):
 @admin.register(BotBinding)
 class BotBindingAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "bot",
         "participant_group",
     )
@@ -215,6 +240,7 @@ class BotBindingAdmin(admin.ModelAdmin):
 @admin.register(Answer)
 class AnswerAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "Problem",
         "Answer",
         "right",
@@ -238,6 +264,7 @@ class AnswerAdmin(admin.ModelAdmin):
 @admin.register(SubjectGroupBinding)
 class SubjectGroupBindingAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "subject",
         "participant_group",
         "Last_problem",
@@ -252,6 +279,7 @@ class SubjectGroupBindingAdmin(admin.ModelAdmin):
 @admin.register(TelegraphAccount)
 class TelegraphAccountAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "access_token",
         "auth_url",
     )
@@ -260,6 +288,7 @@ class TelegraphAccountAdmin(admin.ModelAdmin):
 @admin.register(TelegraphPage)
 class TelegraphPageAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "path",
         "url",
         "account",

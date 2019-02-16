@@ -70,10 +70,12 @@ def create(queries):
     for model_data in models:
         fields = ''
         getters = ''
-        for field in (model_data[1].get_list_display() if hasattr(
-                model_data[1], 'get_list_display') else
-                      (field for field in model_data[1]._meta.fields[1:]
-                       if '_ptr' not in field.name)):
+        for field in ['id'] + (list(model_data[1].get_list_display()) if
+                               hasattr(model_data[1], 'get_list_display') else [
+                                   field
+                                   for field in model_data[1]._meta.fields[1:]
+                                   if '_ptr' not in field.name
+                               ]):
             if isinstance(field, django.db.models.Field):
                 field = field.name
             elif not isinstance(field, str):
