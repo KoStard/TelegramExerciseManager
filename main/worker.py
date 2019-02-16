@@ -704,20 +704,19 @@ def status_in_administrator_page(bot: Bot,
                                  administrator_page: AdministratorPage,
                                  text: str, message: dict) -> None:
     """ Will log the status to the administrator page """
-    answers = administrator_page.participant_group.activeProblem.answer_set.filter(
-        processed=False,
-        group_specific_participant_data__participant_group=administrator_page.
-        participant_group)
-    answers_count = {variant: len([answer for answer in answers if answer.answer.upper() == variant]) for variant in 'ABCDE'}
+    try:
+        answers = administrator_page.participant_group.activeProblem.answer_set.filter(
+            processed=False,
+            group_specific_participant_data__participant_group=administrator_page.
+            participant_group)
+    except AttributeError:  # If there is no active problem
+        return
+    answers_count = (el for el in ((variant, len([answer for answer in answers if answer.answer.upper() == variant])) for variant in 'ABCDE') if el[1])
     bot.send_message(
         administrator_page,
-        """Running, current status is
-A - {A}
-B - {B}
-C - {C}
-D - {D}
-E - {E}
-For more contact with @KoStard""".format(**answers_count),
+        """Current status is
+{}
+For more contact with @KoStard""".format('\n'.join('{} - {}'.format(*el) for el in answers_count)),
         reply_to_message_id=message['message_id'])
 
 
