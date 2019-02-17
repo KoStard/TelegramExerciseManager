@@ -236,10 +236,13 @@ def update_bot(bot: Bot, *, timeout=60):
                                     #- In the unknown page
                                     pass
                 else:
-                    bot.send_message(
-                        message["chat"]["id"],
-                        "Hi, if you want to use this bot in your groups too, then contact with @KoStard",
-                    )
+                    if text[0] == '/' or message['chat']['type'] == 'private':
+                        bot.send_message(
+                            message["chat"]["id"],
+                            "Hi, if you want to use this bot in your groups too, then contact with @KoStard",
+                        )
+                    else:
+                        pass # Don't send anything
                 bot.offset = update["update_id"] + 1
                 bot.save()
                 continue
