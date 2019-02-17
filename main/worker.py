@@ -825,7 +825,7 @@ def register_participant_group(bot: Bot, message: dict):
         bot.send_message(
             participant_group,
             """This group is now registered and a binding is created,\
-                 so now the bot will listen to your commands.""",
+so now the bot will listen to your commands.""",
             reply_to_message_id=message['message_id'])
 
 
