@@ -584,11 +584,12 @@ def cancel_problem(bot: Bot, participant_group: ParticipantGroup, text: str,
             answer.destroy()
         participant_group.activeSubjectGroupBinding.last_problem = participant_group.activeProblem.previous
         participant_group.activeSubjectGroupBinding.save()
+        temp_problem = participant_group.activeProblem
         participant_group.activeProblem = None
         participant_group.save()
         bot.send_message(
             participant_group,
-            "The problem {} is cancelled.",
+            "The problem {} is cancelled.".format(temp_problem.index),
             reply_to_message_id=message['message_id'])
     else:
         bot.send_message(
@@ -624,14 +625,64 @@ def add_subject(bot, participant_group, text, message):
     pass
 
 
-def select_subject(bot, participant_group, text, message):
-    """ Will select subject in the group """
-    pass
+def select_subject(bot: Bot, participant_group:ParticipantGroup, text:str, message:dict):
+    """ Will select subject in the group 
+    Give with message
+     - index
+    """
+    ''.isnumeric
+    if not ' ' in text or not text.split(' ')[1].isnumeric():
+        bot.send_message(participant_answering,"""You have to give the index of subject to select.
+You can get indexes with /subjects_list command.""", reply_to_message_id=message['message_id'])
+        return
+    index = int(text.split(' ')[1])
+    subject_group_bindings = participant_group.subjectgroupbinding_set.all()
+    if index not in range(1, len(subject_group_bindings) + 1):
+        bot.send_message(
+            participant_group,
+            """You have to give valid subject index.
+You can get indexes with /subjects_list command.""",
+            reply_to_message_id=message['message_id'])
+        return
+    participant_group.activeSubjectGroupBinding = subject_group_bindings[index - 1]
+    participant_group.activeProblem = None
+    participant_group.save()
+    bot.send_message(
+        participant_group,
+        """Subject "{}" is now selected.""".format(
+            subject_group_bindings[index - 1].subject.name),
+        reply_to_message_id=message['message_id'])
+
+
+def active_subject(bot: Bot, participant_group: ParticipantGroup, text: str, message: dict):
+    """ Will send active subject to the group if available """
+    if participant_group.activeSubjectGroupBinding:
+        bot.send_message(
+            participant_group,
+            """Subject "{}" is active.""".format(
+                participant_group.activeSubjectGroupBinding.subject.name),
+            reply_to_message_id=message['message_id'])
+    else:
+        bot.send_message(
+            participant_group,
+            """There is no active subject in this group.""",
+            reply_to_message_id=message['message_id'])
 
 
 def finish_subject(bot, participant_group, text, message):
     """ Will close subject in the group """
     pass
+
+
+def get_subjects_list(bot: Bot, participant_group:ParticipantGroup, text, message):
+    """ Will send subjects list for current group """
+    bot.send_message(
+        participant_group,
+        """This is the subjects list for current group:
+{}""".format('\n'.join(' - '.join(str(e) for e in el) for el in enumerate(
+            (binding.subject.name
+            for binding in participant_group.subjectgroupbinding_set.all()), 1))),
+        reply_to_message_id=message['message_id'])
 
 
 def get_score(bot, participant_group, text, message):
@@ -747,7 +798,9 @@ available_commands = {
     "stop_participant": (remove_from_participant_group, 8, True),
     "add_subject": (add_subject, 9, True),
     "select_subject": (select_subject, 9, True),
+    "active_subject": (active_subject, 8, True),
     "finish_subject": (finish_subject, 9, True),
+    "subjects_list": (get_subjects_list, 9, True),
     # "score": (get_score, 0, True), # Stopping this, because participants can see their scores in the leaderboard
     "report": (report, 2, True),
     "add_special_problem": (add_user_defined_problem, 4, True),
