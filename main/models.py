@@ -59,10 +59,11 @@ class Problem(models.Model):
 
     def __str__(self):
         return """\\<b>#Problem N{}\\</b>{}\n{}\nA. {}\nB. {}\nC. {}\nD. {}\nE. {}{}""".format(
-            self.index, ("\nFrom chapter: #{}".format(self.chapter.replace(' ', '_'))
-                         if self.chapter else ''), self.formulation,
-            self.variant_a, self.variant_b, self.variant_c, self.variant_d,
-            self.variant_e, ('' if self.has_next else '\n#last'))
+            self.index, ("\nFrom chapter: #{}".format(
+                self.chapter.replace(' ', '_')) if self.chapter else ''),
+            self.formulation, self.variant_a, self.variant_b, self.variant_c,
+            self.variant_d, self.variant_e,
+            ('' if self.has_next else '\n#last'))
 
     def get_answer(self):
         """ Is generating problem answer formulation to publish """
@@ -72,7 +73,8 @@ class Problem(models.Model):
     def close(self, participant_group):
         """ Will close the problem for participant group """
         answers = self.answer_set.filter(
-            group_specific_participant_data__participant_group=participant_group,
+            group_specific_participant_data__participant_group=
+            participant_group,
             processed=False
         )  # Getting both right and wrong answers -> have to be processed
         for answer in answers:
@@ -81,13 +83,14 @@ class Problem(models.Model):
         return self.get_leader_board(
             participant_group,
             answers=[answer for answer in answers if answer.right
-                    ])  # Including in the leaderboard only right answers
+                     ])  # Including in the leaderboard only right answers
 
     def get_leader_board(self, participant_group, answers=None):
         """ Will return problem leaderboard """
         answers = answers or Answer.objects.filter(
             problem=self,
-            group_specific_participant_data__participant_group=participant_group,
+            group_specific_participant_data__participant_group=
+            participant_group,
             right=True,
             processed=False)
         res = "Right answers:"
@@ -98,8 +101,9 @@ class Problem(models.Model):
                     index, answer.group_specific_participant_data.participant,
                     answer.group_specific_participant_data.score,
                     (' [{}%]'.format(
-                        answer.group_specific_participant_data.percentage) if
-                     answer.group_specific_participant_data.percentage else ''))
+                        answer.group_specific_participant_data.percentage)
+                     if answer.group_specific_participant_data.percentage else
+                     ''))
                 if index <= 3:
                     current = '\\<b>{}\\</b>'.format(current)
                 index += 1
@@ -177,7 +181,6 @@ class ParticipantDefinedProblem(Problem):
         db_table = 'db_problem_participant_defined'
 
 
-
 class GroupType(models.Model):
     """ Group Types """
     name = models.CharField(max_length=50)
@@ -218,6 +221,7 @@ class ParticipantGroupPlayingModePrincipal(models.Model):
 
     def __str__(self):
         return self.name
+
     class Meta:
         verbose_name = 'Participant Group Playing Mode Principal'
         db_table = 'db_participant_group_playing_mode_principal'
@@ -248,7 +252,8 @@ class ParticipantGroup(Group):
         Problem, on_delete=models.CASCADE, blank=True, null=True)
     activeSubjectGroupBinding = models.ForeignKey(
         'SubjectGroupBinding', on_delete=models.CASCADE, blank=True, null=True)
-    playingMode = models.ForeignKey(ParticipantGroupPlayingMode, on_delete=models.CASCADE)
+    playingMode = models.ForeignKey(
+        ParticipantGroupPlayingMode, on_delete=models.CASCADE)
 
     def get_administrator_page(self):
         """ Will return administrator page if available """
@@ -257,15 +262,10 @@ class ParticipantGroup(Group):
     @staticmethod
     def get_list_display():
         """ Used in the django_admin_creator """
-        return (
-            "telegram_id",
-            "username",
-            "title",
-            "type",
-            ("active_problem", "self.activeProblem.index"),
-            ("active_subject_group_binding", "self.activeSubjectGroupBinding"),
-            "playingMode"
-        )
+        return ("telegram_id", "username", "title", "type",
+                ("active_problem", "self.activeProblem.index"),
+                ("active_subject_group_binding",
+                 "self.activeSubjectGroupBinding"), "playingMode")
 
     def __str__(self):
         return '[{}] {} -[{}::{}]-> {}'.format(
@@ -275,9 +275,9 @@ class ParticipantGroup(Group):
 
     def save(self, *args, **kwargs):
         if not self.playingMode:
-            self.playingMode = ParticipantGroupPlayingMode.objects.get(value='default')
+            self.playingMode = ParticipantGroupPlayingMode.objects.get(
+                value='default')
         super().save(*args, **kwargs)
-
 
     class Meta:
         verbose_name = 'Participant Group'
@@ -393,10 +393,12 @@ class Bot(User):
         for message in blocks:
             url = self.base_url + 'sendMessage'
             payload = {
-                'chat_id': group,
-                'text': message.replace('<', '&lt;').replace('\\&lt;', '<'),
-                'reply_to_message_id': reply_to_message_id if not resp else
-                                       resp[-1].get('message_id')
+                'chat_id':
+                group,
+                'text':
+                message.replace('<', '&lt;').replace('\\&lt;', '<'),
+                'reply_to_message_id':
+                reply_to_message_id if not resp else resp[-1].get('message_id')
             }
             if parse_mode:
                 payload['parse_mode'] = parse_mode
@@ -412,8 +414,8 @@ class Bot(User):
                    caption='',
                    reply_to_message_id=None):
         """ Will send an image to the group """
-        if not (isinstance(participant_group, str) or
-                isinstance(participant_group, int)):
+        if not (isinstance(participant_group, str)
+                or isinstance(participant_group, int)):
             participant_group = participant_group.telegram_id
         url = self.base_url + 'sendPhoto'
         payload = {
@@ -427,11 +429,11 @@ class Bot(User):
         logging.info(resp)
         return resp
 
-    def delete_message(self, participant_group: str or Group, message_id: int or
-                       str):
+    def delete_message(self, participant_group: str or Group, message_id: int
+                       or str):
         """ Will delete message from the group """
-        if not (isinstance(participant_group, str) or
-                isinstance(participant_group, int)):
+        if not (isinstance(participant_group, str)
+                or isinstance(participant_group, int)):
             participant_group = participant_group.telegram_id
         url = self.base_url + 'deleteMessage'
         payload = {'chat_id': participant_group, 'message_id': message_id}
@@ -440,8 +442,8 @@ class Bot(User):
         return resp
 
     def __str__(self):
-        return '[BOT] {}'.format(self.first_name or self.username or
-                                 self.last_name)
+        return '[BOT] {}'.format(self.first_name or self.username
+                                 or self.last_name)
 
     class Meta:
         verbose_name = 'Bot'
@@ -514,8 +516,8 @@ class GroupSpecificParticipantData(models.Model):
         if self.score >= 450:
             return round((1 - sum(
                 answer.problem.value
-                for answer in self.answer_set.filter(right=False)) / self.score)
-                         * 1000) / 10
+                for answer in self.answer_set.filter(right=False)) / self.score
+                          ) * 1000) / 10
 
     def recalculate_roles(self):
         """ Will recalculate user's roles in the group """
@@ -533,10 +535,9 @@ class GroupSpecificParticipantData(models.Model):
             standard_role = highest_binding.role
 
             new_role = [
-                st.role
-                for st in ScoreThreshold.objects.all()
-                if st.range_min <= self.score and st.range_max >= self.score and
-                st.role.from_stardard_kit
+                st.role for st in ScoreThreshold.objects.all()
+                if st.range_min <= self.score and st.range_max >= self.score
+                and st.role.from_stardard_kit
             ]
             if not new_role or new_role[
                     0].priority_level <= standard_role.priority_level:
@@ -550,10 +551,9 @@ class GroupSpecificParticipantData(models.Model):
         else:
             standard_role = None
             new_role = [
-                st.role
-                for st in ScoreThreshold.objects.all()
-                if st.range_min <= self.score and st.range_max >= self.score and
-                st.role.from_stardard_kit
+                st.role for st in ScoreThreshold.objects.all()
+                if st.range_min <= self.score and st.range_max >= self.score
+                and st.role.from_stardard_kit
             ]
             if not new_role:
                 return
@@ -571,7 +571,9 @@ class GroupSpecificParticipantData(models.Model):
     def highest_role_binding(self):
         """ Will return user's highest role binding in the group """
         from main.models import ParticipantGroupBinding
-        res = ParticipantGroupBinding(groupspecificparticipantdata = self, role=Role.objects.get(value='guest'))
+        res = ParticipantGroupBinding(
+            groupspecificparticipantdata=self,
+            role=Role.objects.get(value='guest'))
         for binding in self.participantgroupbinding_set.all():
             if not res or binding.role.priority_level > res.role.priority_level:
                 res = binding
@@ -580,7 +582,8 @@ class GroupSpecificParticipantData(models.Model):
     @property
     def highest_role(self):
         """ Will return user's highest role in the group """
-        return self.highest_role_binding.role or Role.objects.get(value='guest')
+        return self.highest_role_binding.role or Role.objects.get(
+            value='guest')
 
     @property
     def highest_standard_role_binding(self):
@@ -736,7 +739,8 @@ class SubjectGroupBinding(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     participant_group = models.ForeignKey(
         ParticipantGroup, on_delete=models.CASCADE)
-    last_problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
+    last_problem = models.ForeignKey(
+        Problem, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return '{}->{}'.format(self.subject, self.participant_group)
