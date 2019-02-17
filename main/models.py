@@ -274,7 +274,7 @@ class ParticipantGroup(Group):
             safe_getter(self, 'activeProblem.index', default=''))
 
     def save(self, *args, **kwargs):
-        if not self.playingMode:
+        if not hasattr(self, 'playingMode') or not self.playingMode:
             self.playingMode = ParticipantGroupPlayingMode.objects.get(
                 value='default')
         super().save(*args, **kwargs)
