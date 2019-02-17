@@ -217,17 +217,22 @@ def update_bot(bot: Bot, *, timeout=60):
             except ParticipantGroup.DoesNotExist:
                 participant = get_from_Model(
                     Participant, pk=message["from"]["id"])
-                if participant and safe_getter(participant, 'superadmin'):
+                administratorpage = get_from_Model(
+                    AdministratorPage, telegram_id=message['chat']['id'])
+                groupspecificparticipantdata = administratorpage.participant_group.groupspecificparticipantdata_set.filter(
+                    participant=participant)
+                if participant and (
+                    (administratorpage and groupspecificparticipantdata
+                     and groupspecificparticipantdata[0].highest_role.
+                     priority_level > 8)
+                        or hasattr(participant, 'superadmin')):
                     if text and text[0] == '/':
                         command = text[1:].split(" ")[0].split('@')[0]
                         if command in available_commands and available_commands[
-                                command][1] == 'superadmin':
+                                command][1] == 'superadmin' or command == 'status': # Restricting commands in administrator page
                             if not available_commands[command][2]:
                                 available_commands[command][0](bot, message)
                             else:
-                                administratorpage = get_from_Model(
-                                    AdministratorPage,
-                                    telegram_id=message['chat']['id'])
                                 if administratorpage:
                                     #- In the registered administrator page
                                     available_commands[command][0](
@@ -235,6 +240,11 @@ def update_bot(bot: Bot, *, timeout=60):
                                 else:
                                     #- In the unknown page
                                     pass
+                        else:
+                            bot.send_message(
+                                administratorpage,
+                                "You can't use this command in administrator pages.",
+                                reply_to_message_id=message['message_id'])
                 else:
                     if text[0] == '/' or message['chat']['type'] == 'private':
                         bot.send_message(
