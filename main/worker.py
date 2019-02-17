@@ -419,7 +419,10 @@ def update_bot(bot: Bot, *, timeout=60):
                     if command in available_commands:
                         max_priority_role = groupspecificparticipantdata.highest_role
                         priority_level = max_priority_role.priority_level
-                        if priority_level >= available_commands[command][1]:
+                        if (
+                                available_commands[command][1] == 'superadmin'
+                                and safe_getter(participant, 'superadmin')
+                        ) or priority_level >= available_commands[command][1]:
                             if available_commands[command][2]:
                                 if not BotBinding.objects.filter(
                                         bot=bot,
@@ -432,8 +435,10 @@ def update_bot(bot: Bot, *, timeout=60):
                                             "message_id"],
                                     )
                                     return
-                            available_commands[command][0](
-                                bot, participant_group, text, message)
+                            available_commands[command][0](*(
+                                (bot, participant_group, text,
+                                 message) if available_commands[command][1] !=
+                                'superadmin' else (bot, message)))
                         else:
                             bot.send_message(
                                 participant_group,
@@ -789,6 +794,38 @@ def root_test(bot: Bot, administrator_page: AdministratorPage, text: str,
     )  # Is working, so the bug with image sending is solved.
 
 
+def register_participant_group(bot: Bot, message: dict):
+    """ Will register chat as a participant group """
+    chat = message.get("chat")
+    tp = get_from_Model(GroupType, name=chat['type'])
+    if not chat:
+        logging.info("Can't get chat to register.")
+        pass
+    participant_group = get_from_Model(ParticipantGroup, telegram_id=chat['id'])
+    if participant_group:
+        bot.send_message(
+            participant_group,
+            "This group is already registered.",
+            reply_to_message_id=message['message_id']
+        )  # Maybe add reference to the documentation with this message
+    elif not tp:
+        bot.send_message(chat['id'], "Unknown type of group, to improve this connect with @KoStard.", reply_to_message_id=message['message_id'])
+    else:
+        participant_group = ParticipantGroup(
+            telegram_id=chat['id'],
+            username=chat.get('username'),
+            title=chat.get('title'),
+            type=tp)
+        participant_group.save()
+        binding = BotBinding(bot=bot, participant_group=participant_group)
+        binding.save()
+        bot.send_message(
+            participant_group,
+            """This group is now registered and a binding is created,\
+                 so now the bot will listen to your commands.""",
+            reply_to_message_id=message['message_id'])
+
+
 #- (function, min_priority_level, needs_binding)
 available_commands = {
     "send": (send_problem, 6, True),
@@ -808,6 +845,7 @@ available_commands = {
     "stop_admin": (stop_in_administrator_page, 'superadmin', True),
     "status": (status_in_administrator_page, 'superadmin', True),
     "root_test": (root_test, 'superadmin', True),
+    "register": (register_participant_group, 'superadmin', False),
 }
 
 
