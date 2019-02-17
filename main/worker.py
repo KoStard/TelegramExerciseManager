@@ -776,6 +776,10 @@ def status_in_administrator_page(bot: Bot,
             group_specific_participant_data__participant_group=administrator_page.
             participant_group)
     except AttributeError:  # If there is no active problem
+        bot.send_message(
+            administrator_page,
+            """There is no active problem.""",
+            reply_to_message_id=message['message_id'])
         return
     answers_count = (el for el in ((variant, len([answer for answer in answers if answer.answer.upper() == variant])) for variant in 'ABCDE') if el[1])
     bot.send_message(
@@ -846,7 +850,7 @@ available_commands = {
     "add_special_problem": (add_user_defined_problem, 4, True),
     "start_admin": (start_in_administrator_page, 'superadmin', False),
     "stop_admin": (stop_in_administrator_page, 'superadmin', True),
-    "status": (status_in_administrator_page, 'superadmin', True),
+    "status": (status_in_administrator_page, 8, True),
     "root_test": (root_test, 'superadmin', True),
     "register": (register_participant_group, 'superadmin', False),
 }
