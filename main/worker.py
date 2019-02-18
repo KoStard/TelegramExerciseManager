@@ -219,8 +219,9 @@ def update_bot(bot: Bot, *, timeout=60):
                     Participant, pk=message["from"]["id"])
                 administratorpage = get_from_Model(
                     AdministratorPage, telegram_id=message['chat']['id'])
-                groupspecificparticipantdata = administratorpage.participant_group.groupspecificparticipantdata_set.filter(
-                    participant=participant)
+                if administratorpage:
+                    groupspecificparticipantdata = administratorpage.participant_group.groupspecificparticipantdata_set.filter(
+                        participant=participant)
                 if participant and (
                     (administratorpage and groupspecificparticipantdata
                      and groupspecificparticipantdata[0].highest_role.
