@@ -72,10 +72,12 @@ class Problem(models.Model):
 
     def close(self, participant_group):
         """ Will close the problem for participant group """
-        answers = self.answer_set.filter(
-            group_specific_participant_data__participant_group=
-            participant_group,
-            processed=False
+        answers = sorted(
+            self.answer_set.filter(
+                group_specific_participant_data__participant_group=
+                participant_group,
+                processed=False),
+            key=lambda answer: answer.id
         )  # Getting both right and wrong answers -> have to be processed
         for answer in answers:
             answer.process()
@@ -87,12 +89,14 @@ class Problem(models.Model):
 
     def get_leader_board(self, participant_group, answers=None):
         """ Will return problem leaderboard """
-        answers = answers or Answer.objects.filter(
-            problem=self,
-            group_specific_participant_data__participant_group=
-            participant_group,
-            right=True,
-            processed=False)
+        answers = answers or sorted(
+            Answer.objects.filter(
+                problem=self,
+                group_specific_participant_data__participant_group=
+                participant_group,
+                right=True,
+                processed=False),
+            key=lambda answer: answer.id)
         res = "Right answers:"
         if len(answers):
             index = 1
