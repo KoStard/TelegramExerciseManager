@@ -247,7 +247,7 @@ def update_bot(bot: Bot, *, timeout=60):
                                 "You can't use this command in administrator pages.",
                                 reply_to_message_id=message['message_id'])
                 else:
-                    if text[0] == '/' or message['chat']['type'] == 'private':
+                    if not text or text[0] == '/' or message['chat']['type'] == 'private':
                         bot.send_message(
                             message["chat"]["id"],
                             "Hi, if you want to use this bot in your groups too, then contact with @KoStard",
