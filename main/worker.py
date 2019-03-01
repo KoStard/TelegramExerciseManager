@@ -187,7 +187,7 @@ def unilog(log: str) -> None:
     """
     print(log)  # Logging to stdout
     logging.info(f'{timezone.now()} | {log}')  # Logging to logs file
-    adm_log(DATA_STACK[-1]['bot'], DATA_STACK[-1]['participant_group'],
+    adm_log(DATA_STACK[-1]['bot'], DATA_STACK[-1]['administrator_page'],
             log)  # Logging to administrator page
 
 
@@ -298,7 +298,7 @@ def handle_entities(source) -> bool:
             source['bot'].send_message(
                 source['participant_group'],
                 "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                \nFor more information contact with @KoStard"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 .format(
+                \nFor more information contact with @KoStard".format(
                     source['participant'].name,
                     entities_check_response["cause"],
                     ", ".join("{} - {}".format(
@@ -335,7 +335,7 @@ def handle_message_bindings(source) -> bool:
             source['bot'].send_message(
                 source['participant_group'],
                 "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                \nFor more information contact with @KoStard"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 .format(
+                \nFor more information contact with @KoStard".format(
                     source['participant'].name,
                     ', '.join(message_bindings_check_response["cause"]),
                     ", ".join("{} - {}".format(
@@ -471,7 +471,7 @@ def reject_command_in_pg(source):
     source['bot'].send_message(
         source['participant_group'],
         'Sorry dear {}, you don\'t have permission to use \
-                command {} - your highest role is "{}".'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .format(
+                command {} - your highest role is "{}".'.format(
             source['participant'], source['command'],
             source['groupspecificparticipantdata'].highest_role.name),
         reply_to_message_id=source['message']["message_id"],
