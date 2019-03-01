@@ -37,42 +37,47 @@ def configure_logging():
     """ Encoding will be utf-8 """
     root_logger = logging.getLogger()
     """ Preventing multiple calls """
-    if (root_logger.handlers and
-            root_logger.handlers[0].stream.name == "logs.txt" and
-            root_logger.handlers[0].stream.encoding == "utf-8"):
+    if (root_logger.handlers
+            and root_logger.handlers[0].stream.name == "logs.txt"
+            and root_logger.handlers[0].stream.encoding == "utf-8"):
         return
     root_logger.setLevel(logging.INFO)
     handler = logging.FileHandler("logs.txt", "a", "utf-8")
     root_logger.addHandler(handler)
 
 
-#- Working for related objects too
-# def safe_getter(obj, attr):
-#     """ Use this function to get attributes without fear of throwing exception """
-#     if not obj or not hasattr(obj, attr):
-#         return None
-#     return getattr(obj, attr)
-
-
-def get_from_Model(Model, **kwargs):
-    """ Use this function to get model without fear of throwing exception """
+def get_from_Model(Model, _mode='default', **kwargs):
+    """ Use this function to get model without fear of throwing exception 
+    _mode -> 'default', 'direct'
+    """
     try:
-        return Model.objects.get(**kwargs)
-    except Model.DoesNotExist:
+        if _mode == 'default':
+            return Model.objects.get(**kwargs)
+        elif _mode == 'direct':
+            return Model.get(**kwargs)
+    except Model.DoesNotExist if _mode == 'default' else Exception:
         return None
 
 
-def safe_getter(model: object, path: str, default=None):
+def safe_getter(model: object or dict, path: str, default=None, mode='OBJECT'):
     """ Will give the result if available, otherwise will return default
-     - model will be an instance 
-     - path can start with self"""
+     - model will be an instance or a dict in DICT mode
+     - path can start with self
+     - modes -> OBJECT, DICT
+    """
+    mode = mode.upper()
+    available_modes = ('OBJECT', 'DICT')
+    if mode not in available_modes:
+        raise ValueError(f"Invalid mode '{mode}' in safe_getter")
     path = path.split('.')
     if path[0] == 'self':
         path = path[1:]
     current = model
     for step in path:
-        if hasattr(current, step):
+        if mode == 'OBJECT' and hasattr(current, step):
             current = getattr(current, step)
+        elif mode == 'DICT' and step in current:
+            current = current[step]
         else:
             return default
     return current

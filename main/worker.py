@@ -5,6 +5,20 @@ from django.utils import timezone
 from time import sleep
 from datetime import datetime
 import logging
+from functools import wraps
+"""
+Will contain here whole update data in a dict
+- last element is the dict
+"""
+DATA_STACK = []
+
+
+def sourced(func):
+    @wraps(func)
+    def inner(*, from_args=False, **kwargs):
+        return func(DATA_STACK[-1] if not from_args else kwargs)
+    return inner
+
 
 # configure_logging()
 
@@ -13,66 +27,6 @@ def adm_log(bot: Bot, participant_group: ParticipantGroup, message: str):
     """ Will log to the administrator page if available """
     if hasattr(participant_group, 'administratorpage'):
         bot.send_message(participant_group.administratorpage, message)
-
-
-def participant_answering(participant, participant_group, problem, variant, *,
-                          bot, message):
-    """ Call this function when the user is answering
-    - can be used to manually add answers, if the bot didn't see the message"""
-    is_right = False
-    variant = variant.lower()
-    group_specific_participant_data = participant.groupspecificparticipantdata_set.get(
-        participant_group=participant_group)
-    right_answers_count = len(
-        problem.answer_set.filter(
-            right=True,
-            processed=False,
-            group_specific_participant_data__participant_group=participant_group
-        ))  # Getting right answers only from current group
-    old_answers = problem.answer_set.filter(
-        group_specific_participant_data=group_specific_participant_data,
-        processed=False)
-    if not old_answers:
-        if variant == problem.right_variant.lower():
-            print("Right answer from {} N{}".format(participant,
-                                                    right_answers_count + 1))
-            is_right = True
-        else:
-            print("Wrong answer from {} - Right answers {}".format(
-                participant, right_answers_count))
-        answer = Answer(
-            **{
-                "problem": problem,
-                "answer": variant,
-                "right": is_right,
-                "processed": False,
-                "group_specific_participant_data": group_specific_participant_data,
-                "date": timezone.now(),
-            })
-        answer.save()
-    else:
-        if old_answers[0].answer.lower() == variant.lower():
-            # Sending same answer again
-            print("{} is trying to answer {} again".format(
-                participant, variant))
-            logging.info("{} is trying to answer {} again".format(
-                participant, variant))
-            if bot and message:  # Will just remove the message
-                # This can lead to problems -> Can think that there is a problem with telegram
-                bot.delete_message(
-                    participant_group,
-                    message['message_id'])
-        else:
-            print("{} is trying to change answer {} to {}".format(
-                participant, old_answers[0].answer, variant))
-            logging.info("{} is trying to change answer {} to {}".format(
-                participant, old_answers[0].answer, variant))
-            if bot:
-                bot.send_message(
-                    participant_group,
-                    'Dear {}, you can\'t change your answer.'.format(
-                        participant.name),
-                    reply_to_message_id=message['message_id'] if message else None)
 
 
 AVAILABLE_ENTITIES = {
@@ -92,32 +46,25 @@ AVAILABLE_ENTITIES = {
 }
 
 
-def check_entities(bot: Bot, participant_group: ParticipantGroup,
-                   participant: Participant, entities: list, message: dict):
+@sourced
+def check_entities(source):
     """ Will check message for entities and check participant's permissions to use them """
-    groupspecificparticipantdata = participant.groupspecificparticipantdata_set.filter(
-        participant_group=participant_group)
     resp = {"status": True, "unknown": False}
-    priority_level = -1
-    if groupspecificparticipantdata:
-        priority_level = max(
-            (participantgroupbinding.role.priority_level
-             for participantgroupbinding in groupspecificparticipantdata[0].
-             participantgroupbinding_set.all()),
-            default=0)
-    for entity in entities:
+    priority_level = source[
+        'groupspecificparticipantdata'].highest_role.priority_level
+    for entity in source['entities']:
         entity = entity["type"]
-        if AVAILABLE_ENTITIES.get(entity) is None:
+        if entity not in AVAILABLE_ENTITIES:
             resp["status"] = False
             resp["cause"] = "Unknown entity {}".format(entity)
             resp["unknown"] = True
-            return resp
+            break
         if AVAILABLE_ENTITIES[entity] > priority_level:
             resp["status"] = False
             resp[
                 "cause"] = "{} entity is not allowed for users with priority level lower than {}".format(
                     entity, AVAILABLE_ENTITIES[entity])
-            return resp
+            break
     return resp
 
 
@@ -134,24 +81,17 @@ AVAILABLE_MESSAGE_BINDINGS = {
 }
 
 
-def check_message_bindings(bot: Bot, participant_group: ParticipantGroup,
-                           participant: Participant, message: dict):
+@sourced
+def check_message_bindings(source):
     """ Will check message for bindings and check participant's permissions to use them """
-    groupspecificparticipantdata = participant.groupspecificparticipantdata_set.filter(
-        participant_group=participant_group)
     resp = {"status": True, "unknown": False}
-    priority_level = -1
-    if groupspecificparticipantdata:
-        priority_level = max(
-            (participantgroupbinding.role.priority_level
-             for participantgroupbinding in groupspecificparticipantdata[0].
-             participantgroupbinding_set.all()),
-            default=0)
+    priority_level = source[
+        'groupspecificparticipantdata'].highest_role.priority_level
     for message_binding in AVAILABLE_MESSAGE_BINDINGS:
-        if message_binding in message and AVAILABLE_MESSAGE_BINDINGS[
+        if message_binding in source['message'] and AVAILABLE_MESSAGE_BINDINGS[
                 message_binding] > priority_level:
-            resp["status"] = False
-            if ("cause" not in resp):
+            if resp["status"]: resp["status"] = False
+            if "cause" not in resp:
                 resp["cause"] = []
             resp["cause"].append(
                 "\"{}\" message binding is not allowed for users with priority level lower than {}"
@@ -160,320 +100,556 @@ def check_message_bindings(bot: Bot, participant_group: ParticipantGroup,
     return resp
 
 
+def save_to_data_stack(**kwargs):
+    for arg in kwargs:
+        DATA_STACK[-1][arg] = kwargs[arg]
+
+
+def get_from_data_stack(**kwargs):
+    if len(kwargs) > 1: return [DATA_STACK[-1][arg] for arg in kwargs]
+    return DATA_STACK[-1][kwargs.values[0]]
+
+
+def get_updates(bot: Bot, *, update_last_updated=True, timeout=60):
+    """ Will return bot updates """
+    url = bot.base_url + "getUpdates"  # The URL of getting bot updates
+    updates = get_response(
+        url,
+        payload={
+            'offset': bot.offset or "",  # Setting offset
+            'timeout':
+            timeout  # Setting timeout to delay empty updates handling
+        })
+    if update_last_updated:
+        bot.last_updated = timezone.now()
+        bot.save()
+    return updates
+
+
+def handle_update(bot, update, *, catch_exceptions=False) -> bool:
+    """ Handling Update
+    - True -> the process is finished normal
+    - False -> catched exception
+    - exception -> when exception was raised, but catch_exception is False
+
+    Adding {update, message, bot} to the DATA_STACK
+    """
+    message = update.get('message')
+    DATA_STACK.append({
+        'update': update,
+        'message': message,
+        'bot': bot
+    })  # Adding the dictionary for this update
+    catched_exception = False
+    if message:
+        try:
+            handle_message(bot, message)
+        except Exception as exception:
+            if catch_exceptions:
+                catched_exception = True
+                return False
+            else:
+                DATA_STACK.pop()
+                raise exception
+    DATA_STACK.pop()
+    return True
+
+
+@sourced
+def create_log_from_message(source) -> str:
+    """ Creating log from Telegram message """
+    name = source['participant'].name
+    data = (
+        (source['raw_text'] or '') +
+        ('' if not source['entities'] else
+         '\nFound entities: ' + ', '.join(entity['type']
+                                          for entity in source['entities']))
+    ) or ', '.join(
+        message_binding for message_binding in AVAILABLE_MESSAGE_BINDINGS
+        if message_binding in source['message']) or (
+            ("New chat member" if len(source['message']['new_chat_members']) ==
+             1 and source['message']['new_chat_members'][0]['id'] ==
+             source['participant'].id else 'Invited {}'.format(', '.join(
+                 user['first_name'] or user['last_name'] or user['username']
+                 for user in source['message'].get('new_chat_members'))))
+            if 'new_chat_members' in source['message'] else '')
+    result = f"{name} -> {data}"
+    return result
+
+
+def unilog(log: str) -> None:
+    """ Will log to the:
+    - stdout
+    - logging
+    - adm_page
+    """
+    print(log)  # Logging to stdout
+    logging.info(f'{timezone.now()} | {log}')  # Logging to logs file
+    adm_log(DATA_STACK[-1]['bot'], DATA_STACK[-1]['participant_group'],
+            log)  # Logging to administrator page
+
+
+def register_participant(user_data) -> Participant:
+    """
+    Will register participant based on user_data
+    """
+    participant = Participant(
+        username=safe_getter(user_data, 'username', mode='DICT'),
+        first_name=safe_getter(user_data, 'first_name', mode='DICT'),
+        last_name=safe_getter(user_data, 'last_name', mode='DICT'))
+    participant.save()
+    return participant
+
+
+def register_groupspecificparticipantdata(
+        **kwargs) -> GroupSpecificParticipantData:
+    """
+    Will register GroupSpecificParticipantData
+    - participant
+    - participant_group
+    [Optional]
+    - score
+    - joined
+    """
+    gspd = GroupSpecificParticipantData(**kwargs)
+    gspd.save()
+    return gspd
+
+
+@sourced
+def get_or_register_message_sender_participant(source) -> Participant:
+    """
+    Will get if registered or register message sender as a participant
+    """
+    if safe_getter(source, 'message.from', mode='DICT'):
+        participant = get_from_Model(
+            Participant, id=source['message']['from']['id'])
+        if not participant:
+            participant = register_participant(source['message']['from'])
+        save_to_data_stack(participant=participant)
+        return participant
+    else:
+        save_to_data_stack(participant=None)
+        raise ValueError("INVALID MESSAGE DATA")
+
+
+@sourced
+def get_or_register_groupspecificparticipantdata_of_active_participant(
+        source) -> GroupSpecificParticipantData:
+    """
+    Will get if registered or register participant in active participant_group
+    """
+    if source['participant_group'] and source['participant']:
+        gspd = get_from_Model(
+            source['participant'].groupspecificparticipantdata_set,
+            participant_group=source['participant_group'], _mode='direct')
+        if not gspd:
+            gspd = register_groupspecificparticipantdata(
+                participant=source['participant'],
+                participant_group=source['participant_group'])
+        save_to_data_stack(groupspecificparticipantdata=gspd)
+        return gspd
+    else:
+        save_to_data_stack(groupspecificparticipantdata=None)
+        raise ValueError(
+            "INVALID DATA IN get_or_register_groupspecificparticipantdata_of_active_participant"
+        )
+
+
+@sourced
+def register_participant_group_new_members(source) -> list:
+    """
+    Will register all participant group new members
+    """
+    new_members = []
+    for new_member_data in safe_getter(
+            source, 'message.new_chat_members', default=[], mode='DICT'):
+        participant = get_from_Model(Participant, id=new_member_data['id'])
+        if not participant:
+            participant = register_participant(new_member_data)
+        gspd = get_from_Model(
+            participant.groupspecificparticipantdata_set,
+            participant_group=source['participant_group'])
+        if not gspd:
+            gspd = register_groupspecificparticipantdata(
+                participant=participant,
+                participant_group=source['participant_group'],
+                joined=datetime.fromtimestamp(
+                    message["date"], tz=timezone.get_current_timezone()),
+            )
+        new_members.append((participant, gspd))
+    save_to_data_stack(new_members_models=new_members)
+    return new_members
+
+
+@sourced
+def handle_entities(source) -> bool:
+    """ Will handle entities from source's message """
+    entities = safe_getter(source, 'message.entities', mode='dict', default=[])
+    save_to_data_stack(entities=entities)
+    entities_check_response = check_entities()
+    save_to_data_stack(entities_check_response=entities_check_response)
+    logging.info("Found Entity: " + str(entities_check_response))
+    if not entities_check_response["status"]:
+        if not entities_check_response["unknown"]:
+            # Sending answer message to the message with restricted entities
+            source['bot'].send_message(
+                source['participant_group'],
+                "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
+                \nFor more information contact with @KoStard"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 .format(
+                    source['participant'].name,
+                    entities_check_response["cause"],
+                    ", ".join("{} - {}".format(
+                        participantgroupbinding.role.name,
+                        participantgroupbinding.role.priority_level,
+                    ) for participantgroupbinding in
+                                source['groupspecificparticipantdata'].
+                                participantgroupbinding_set.all())
+                    or '-',
+                ),
+                reply_to_message_id=source['message']["message_id"],
+            )
+            # Removing message with restricted entities
+            source['bot'].delete_message(source['participant_group'],
+                                         source['message']["message_id"])
+            # Creating violation
+            source['groupspecificparticipantdata'].create_violation(
+                get_from_Model(
+                    ViolationType,
+                    value='message_entity_low_permissions'),
+                datetime.fromtimestamp(
+                    source['message']["date"],
+                    tz=timezone.get_current_timezone()))
+            return False
+    return True
+
+
+@sourced
+def handle_message_bindings(source) -> bool:
+    message_bindings_check_response = check_message_bindings()
+    if not message_bindings_check_response["status"]:
+        logging.info(message_bindings_check_response["cause"])
+        if not message_bindings_check_response["unknown"]:
+            source['bot'].send_message(
+                source['participant_group'],
+                "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
+                \nFor more information contact with @KoStard"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 .format(
+                    source['participant'].name,
+                    ', '.join(message_bindings_check_response["cause"]),
+                    ", ".join("{} - {}".format(
+                        participantgroupbinding.role.name,
+                        participantgroupbinding.role.priority_level,
+                    ) for participantgroupbinding in
+                                source['groupspecificparticipantdata'].
+                                participantgroupbinding_set.all()),
+                ),
+                reply_to_message_id=source['message']["message_id"],
+            )
+            source['bot'].delete_message(source['participant_group'],
+                                         source['message']["message_id"])
+            source['groupspecificparticipantdata'].create_violation(
+                get_from_Model(
+                    ViolationType,
+                    value='message_binding_low_permissions'))
+            return False
+    return True
+
+
+@sourced
+def handle_answer_change(source):
+    """
+    Catching when participant is trying to change the answer
+    """
+    if not source.get('bot') or not source.get('message'):
+        return
+    if source['old_answer'].answer.upper() == source['variant'].upper():
+        # Sending same answer again
+        unilog("{} is trying to answer {} again".format(
+            source['participant'], source['variant']))
+        source['bot'].delete_message(source['participant_group'],
+                                     source['message']['message_id'])
+    else:
+        unilog("{} is trying to change answer {} to {}".format(
+            source['participant'], source['old_answer'].answer,
+            source['variant']))
+        source['bot'].send_message(
+            source['participant_group'],
+            'Dear {}, you can\'t change your answer.'.format(
+                source['participant'].name),
+            reply_to_message_id=source['message']['message_id'])
+
+
+@sourced
+def accept_answer(source) -> Answer:
+    """
+    Accepting answer - right or wrong
+    """
+    if source['variant'] == source['participant_group'].activeProblem.right_variant.upper():
+        print("Right answer from {} N{}".format(
+            source['participant'],
+            len(
+                source['participant_group'].activeProblem.answer_set.filter(
+                    right=True,
+                    processed=False,
+                    group_specific_participant_data__participant_group=
+                    source['participant_group'])) + 1))
+    else:
+        print("Wrong answer from {} - Right answers {}".format(
+            source['participant'],
+            len(
+                source['participant_group'].activeProblem.answer_set.filter(
+                    right=True,
+                    processed=False,
+                    group_specific_participant_data__participant_group=source[
+                        'participant_group']))))
+    answer = Answer(
+        problem=source['participant_group'].activeProblem,
+        answer=source['variant'],
+        right=source['variant'] == source['participant_group'].activeProblem.right_variant.upper(),
+        processed=False,
+        group_specific_participant_data=source['groupspecificparticipantdata'],
+        date=timezone.now(),
+    )
+    answer.save()
+    return answer
+
+
+@sourced
+def handle_answer(source):
+    """
+    Will handle participant answers
+    """
+    if not source['participant_group'].activeProblem:
+        print(f"There is no active problem in {source['participant_group']}")
+        return False
+    old_answer = get_from_Model(
+        source['participant_group'].activeProblem.answer_set,
+        group_specific_participant_data=source[
+            'groupspecificparticipantdata'],
+        processed=False,
+        _mode='direct')
+    save_to_data_stack(old_answer=old_answer)
+    if old_answer:
+        handle_answer_change()
+    else:
+        accept_answer()
+
+
+@sourced
+def handle_pgm_text(source):
+    """
+    Will handle text from participant_group message
+    """
+    if not source['text']:
+        return  # There is no text in the message
+    if len(source['text']) == 1 and source['text'].upper() in ('A', 'B', 'C', 'D', 'E'):
+        save_to_data_stack(variant=source['text'].upper())
+        handle_answer()
+    else:
+        pass  # Just regular message in participant group
+
+
+@sourced
+def handle_superadmin_commands_in_pg(source):
+    available_commands[
+        source['command']][0](  # These functions will becose sourced too soon
+            source['bot'], source['participant_group'], source['raw_text'],
+            source['message'])
+
+
+@sourced
+def accept_command_in_pg(source):
+    available_commands[source['command']][0](  # These functions will become sourced too soon
+        source['bot'], source['participant_group'], source['raw_text'],
+        source['message'])
+
+
+@sourced
+def reject_command_in_pg(source):
+    source['bot'].send_message(
+        source['participant_group'],
+        'Sorry dear {}, you don\'t have permission to use \
+                command {} - your highest role is "{}".'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .format(
+            source['participant'], source['command'],
+            source['groupspecificparticipantdata'].highest_role.name),
+        reply_to_message_id=source['message']["message_id"],
+    )
+    source['groupspecificparticipantdata'].create_violation(
+        get_from_Model(ViolationType, value='command_low_permissions'))
+
+
+@sourced
+def handle_pgm_commands(source):
+    """
+    Will handle commands from participant_group message
+    """
+    if not source['command']:
+        return
+    if source['command'] in available_commands:
+        priority_level = source[
+            'groupspecificparticipantdata'].highest_role.priority_level
+        if (available_commands[source['command']][1] == 'superadmin'
+                and safe_getter(source['participant'], 'superadmin')
+            ):
+            handle_superadmin_commands_in_pg()
+        elif (safe_getter(source['participant'], 'superadmin')
+              or priority_level >= available_commands[source['command']][1]
+              ) and source['command'] != 'status':
+            accept_command_in_pg()
+        else:
+            reject_command_in_pg()
+    elif source['command']:
+        source['bot'].send_message(
+            source['participant_group'],
+            'Invalid command "{}"'.format(source['command']),
+            reply_to_message_id=source['message']["message_id"],
+        )
+
+
+@sourced
+def handle_message_from_participant_group(source):
+    """
+    Will handle message from participant group
+    """
+    get_or_register_message_sender_participant()
+    get_or_register_groupspecificparticipantdata_of_active_participant()
+    register_participant_group_new_members()
+    if handle_entities() and handle_message_bindings():
+        unilog(create_log_from_message())
+        handle_pgm_text()
+        handle_pgm_commands()
+    else:
+        unilog(create_log_from_message())
+
+
+@sourced
+def handle_message_from_administrator_page(source):
+    """ Will handle message from administrator page
+    + superadmins """
+    if not source['command']:
+        return  # Just text
+    if source['command'] in available_commands:
+        if (
+            available_commands[source['command']][1] == 'superadmin'
+            or source['command'] == 'status'
+        ) and available_commands[source['command']][2]:
+            available_commands[source['command']][0](
+                source['bot'], source['administrator_page'],
+                source['raw_text'], source['message'])
+        else:
+            source['bot'].send_message(
+                source['administrator_page'],
+                "You can't use that command in administrator pages.",
+                reply_to_message_id=source['message']['message_id'])
+    else:
+        source['bot'].send_message(
+            source['administrator_page'],
+            "Invalid command.",
+            reply_to_message_id=source['message']['message_id'])
+
+
+@sourced
+def handle_message_from_superadmin(source):
+    """ Will handle message from superadmin 
+    that are not in the administrator page """
+    if source['command'] in available_commands and not available_commands[
+            source['command']][2]:
+        available_commands[source['command']][0](source['bot'],
+                                                 source['message'])
+
+
+@sourced
+def handle_message_from_private_chat(source):
+    """ Will handle message from private chat """
+    source['bot'].send_message(
+        source['message']['chat']['id'],
+        "If you want to use this bot in your groups too, then connect with @KoStard.",
+        reply_to_message_id=source['message']['message_id'])
+
+
+@sourced
+def handle_message_from_unregistered_group(source):
+    """ Will handle messages from groups """
+    if source['command']:
+        source['bot'].send_message(
+            source['message']['chat']['id'],
+            "If you want to use this bot in your groups too, then connect with @KoStard.",
+            reply_to_message_id=source['message']['message_id'])
+    else:
+        pass # When getting simple messages
+
+
+@sourced
+def handle_message_from_bot(source):
+    """ Will handle message from bots """
+    pass
+
+
+@sourced
+def handle_message_from_user(source):
+    """ Handling message from user 
+    [Saving]
+    - text
+    - command
+    - participant_group
+    - is_superadmin
+    - is_administrator_page
+    - administrator_page
+    """
+    save_to_data_stack(raw_text=source['message'].get("text"))
+    save_to_data_stack(
+        command=source['raw_text'][1:].split(" ")[0].
+        split('@')[0] if source['raw_text'] and source['raw_text'][0] == '/' else '') # This won't work with multiargumental commands
+    save_to_data_stack(
+        text=source['raw_text'] if not source['command'] else None)
+
+    #Checking if the group is registered
+    save_to_data_stack(
+        participant_group=get_from_Model(
+            ParticipantGroup, telegram_id=source["message"]["chat"]["id"]))
+    #Checking if is a superadmin
+    is_superadmin = not not SuperAdmin.objects.filter(user__id=source['message']['from']['id'])
+    save_to_data_stack(is_superadmin=is_superadmin)
+    # Checking if in an administrator page
+    administrator_page = get_from_Model(
+        AdministratorPage, telegram_id=source['message']['chat']['id'])
+    save_to_data_stack(is_administrator_page=not not administrator_page)
+    save_to_data_stack(administrator_page=administrator_page)
+
+    if source['participant_group']:
+        # If the participant group is already registered
+        handle_message_from_participant_group()
+    elif administrator_page:
+        # If the message is in the administrator page
+        handle_message_from_administrator_page()
+    elif is_superadmin:
+        # If the user if superadmin but is sending a message not in a registered group
+        handle_message_from_superadmin()
+    elif source['message']['chat']['type'] == 'private':
+        # Will handle message from private chats
+        handle_message_from_private_chat()
+    elif source['message']['chat']['type'] in ('group', 'supergroup'):
+        # Will handle message from groups
+        handle_message_from_unregistered_group()
+    else:
+        print("Don't know what to do... :/")
+
+
+def handle_message(bot, message):
+    """ Handling Message """
+    save_to_data_stack(message=message)
+    if message['from']['is_bot']:
+        handle_message_from_bot()
+    else:
+        handle_message_from_user()
+
+
 def update_bot(bot: Bot, *, timeout=60):
     """ Will get bot updates """
-    url = bot.base_url + "getUpdates"
-    payload = {'offset': bot.offset or "", 'timeout': timeout}
-    resp = get_response(url, payload=payload)
-    bot.last_updated = timezone.now()
-    bot.save()
-    for update in resp:
+    updates = get_updates(bot, timeout=timeout)
+    for update in updates:
         message = update.get("message")
-        if message and not message["from"]["is_bot"]:
-            print("{} [{}->{}] -> {}".format(
-                message["from"].get("first_name") or
-                message["from"].get("username") or
-                message["from"].get("last_name"),
-                message["chat"].get("title"),
-                bot,
-                message.get("text") or
-                (("New chat member" if len(message['new_chat_members']) == 1 and
-                  message['new_chat_members'][0]['id'] == message['from']['id'] else
-                  'Invited {}'.format(', '.join(
-                      user['first_name'] or user['last_name'] or
-                      user['username']
-                      for user in message.get('new_chat_members'))))
-                 if 'new_chat_members' in message else '') or
-                (', '.join(key for key in AVAILABLE_MESSAGE_BINDINGS.keys()
-                           if message.get(key))) or "|UNKNOWN|",
-            ))
-            logging.info("{}| {} [{}->{}] -> {}".format(
-                timezone.now(),
-                message["from"].get("first_name") or
-                message["from"].get("username") or
-                message["from"].get("last_name"),
-                message["chat"].get("title"),
-                bot,
-                message.get("text") or
-                (("New chat member" if len(message['new_chat_members']) == 1 and
-                  message['new_chat_members'][0]['id'] == message['from']['id'] else
-                  'Invited {}'.format(', '.join(
-                      user['first_name'] or user['last_name'] or
-                      user['username']
-                      for user in message.get('new_chat_members'))))
-                 if 'new_chat_members' in message else '') or
-                (', '.join(key for key in AVAILABLE_MESSAGE_BINDINGS.keys()
-                           if message.get(key))) or message,
-            ))
-            text = message.get("text")
-
-            """ Checking if the group is REGISTERED 
-             - Otherwise is checking if the participant is superuser, if is not,
-            sending message about bot to the user and suggesting to connect with KoStard
-             - Getting participant_group """
-            try:
-                participant_group = ParticipantGroup.objects.get(
-                    telegram_id=message["chat"]["id"])
-            except ParticipantGroup.DoesNotExist:
-                participant = get_from_Model(
-                    Participant, pk=message["from"]["id"])
-                administratorpage = get_from_Model(
-                    AdministratorPage, telegram_id=message['chat']['id'])
-                if administratorpage:
-                    groupspecificparticipantdata = administratorpage.participant_group.groupspecificparticipantdata_set.filter(
-                        participant=participant)
-                if participant and (
-                    (administratorpage and groupspecificparticipantdata
-                     and groupspecificparticipantdata[0].highest_role.
-                     priority_level > 8)
-                        or hasattr(participant, 'superadmin')):
-                    if text and text[0] == '/':
-                        command = text[1:].split(" ")[0].split('@')[0]
-                        if command in available_commands and available_commands[
-                                command][1] == 'superadmin' or command == 'status': # Restricting commands in administrator page
-                            if not available_commands[command][2]:
-                                available_commands[command][0](bot, message)
-                            else:
-                                if administratorpage:
-                                    #- In the registered administrator page
-                                    available_commands[command][0](
-                                        bot, administratorpage, text, message)
-                                else:
-                                    #- In the unknown page
-                                    pass
-                        else:
-                            bot.send_message(
-                                administratorpage,
-                                "You can't use this command in administrator pages.",
-                                reply_to_message_id=message['message_id'])
-                else:
-                    if not text or text[0] == '/' or message['chat']['type'] == 'private':
-                        bot.send_message(
-                            message["chat"]["id"],
-                            "Hi, if you want to use this bot in your groups too, then contact with @KoStard",
-                        )
-                    else:
-                        pass # Don't send anything
-                bot.offset = update["update_id"] + 1
-                bot.save()
-                continue
-
-            """ Checking if there are new members in the group and registering them """
-            if message.get("new_chat_members"):
-                for new_chat_member_data in message["new_chat_members"]:
-                    if new_chat_member_data[
-                            "is_bot"] or Participant.objects.filter(
-                                pk=new_chat_member_data["id"]):
-                        continue
-                    participant = Participant(
-                        **{
-                            "id": new_chat_member_data["id"],
-                            "username": new_chat_member_data.get("username"),
-                            "first_name": new_chat_member_data.get("first_name"
-                                                                  ),
-                            "last_name": new_chat_member_data.get("last_name"),
-                            "sum_score": 0,
-                        })
-                    participant.save()
-                    GroupSpecificParticipantData(
-                        **{
-                            "participant": participant,
-                            "participant_group": participant_group,
-                            "score": 0,
-                            "joined": datetime.fromtimestamp(
-                                message["date"],
-                                tz=timezone.get_current_timezone()),
-                        }).save()
-
-            """ Getting
-             - participant - with updated data
-             - groupspecificparticipantdata """
-            try:
-                participant = Participant.objects.get(pk=message["from"]["id"])
-                groupspecificparticipantdata = participant.groupspecificparticipantdata_set.get(
-                    participant_group=participant_group
-                )  # Automatically registering participant in the group
-            except Participant.DoesNotExist:
-                participant = Participant(
-                    **{
-                        "id": message["from"]["id"],
-                        "username": message["from"].get("username"),
-                        "first_name": message["from"].get("first_name"),
-                        "last_name": message["from"].get("last_name"),
-                        "sum_score": 0,
-                    })
-                participant.save()
-                groupspecificparticipantdata = GroupSpecificParticipantData(
-                    **{
-                        "participant": participant,
-                        "participant_group": participant_group,
-                        "score": 0
-                    })
-                groupspecificparticipantdata.save()
-            except GroupSpecificParticipantData.DoesNotExist:
-                groupspecificparticipantdata = GroupSpecificParticipantData(
-                    **{
-                        "participant": participant,
-                        "participant_group": participant_group,
-                        "score": 0
-                    })
-                groupspecificparticipantdata.save()
-                participant.update_from_telegram_dict(message['from'])
-            else:
-                # Updating the participant information when getting an update from that user
-                participant.update_from_telegram_dict(message['from'])
-
-            entities = message.get("entities")
-
-            """ Logging to the administrator page """
-            adm_log(
-                bot, participant_group, "{} -> {}".format(
-                    participant.name,
-                    ((text or '') +
-                     ('' if not entities else '\nFound entities: ' + ', '.join(
-                         entity['type'] for entity in entities))) or
-                    ', '.join(message_binding
-                              for message_binding in AVAILABLE_MESSAGE_BINDINGS
-                              if message_binding in message) or
-                    (("New chat member" if len(message['new_chat_members']) == 1
-                      and message['new_chat_members'][0]['id'] == participant.id
-                      else 'Invited {}'.format(', '.join(
-                          user['first_name'] or user['last_name'] or
-                          user['username']
-                          for user in message.get('new_chat_members'))))
-                     if 'new_chat_members' in message else '')))
-
-            """ Processing entities of message """
-            if entities:
-                entities_check_resp = check_entities(
-                    bot, participant_group, participant, entities, message)
-                logging.info("Found Entity: " + str(entities_check_resp))
-                if not entities_check_resp["status"]:
-                    if not entities_check_resp["unknown"]:
-                        bot.send_message(
-                            participant_group,
-                            "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                            \nFor more information contact with @KoStard".
-                            format(
-                                participant.name,
-                                entities_check_resp["cause"],
-                                ", ".join("{} - {}".format(
-                                    participantgroupbinding.role.name,
-                                    participantgroupbinding.role.priority_level,
-                                ) for participantgroupbinding in
-                                          groupspecificparticipantdata.
-                                          participantgroupbinding_set.all()) or
-                                '-',
-                            ),
-                            reply_to_message_id=message["message_id"],
-                        )
-                        bot.delete_message(participant_group,
-                                           message["message_id"])
-                        groupspecificparticipantdata.create_violation(
-                            get_from_Model(
-                                ViolationType,
-                                value='message_entity_low_permissions'),
-                            datetime.fromtimestamp(
-                                message["date"],
-                                tz=timezone.get_current_timezone()))
-                        bot.offset = update["update_id"] + 1
-                        bot.save()
-                        continue
-
-            """ Getting and processing message bindings of the message """
-            message_bindings_check_resp = check_message_bindings(
-                bot, participant_group, participant, message)
-            if not message_bindings_check_resp["status"]:
-                logging.info(message_bindings_check_resp["cause"])
-                if not message_bindings_check_resp["unknown"]:
-                    bot.send_message(
-                        participant_group,
-                        "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                        \nFor more information contact with @KoStard".format(
-                            participant.name,
-                            ', '.join(message_bindings_check_resp["cause"]),
-                            ", ".join("{} - {}".format(
-                                participantgroupbinding.role.name,
-                                participantgroupbinding.role.priority_level,
-                            ) for participantgroupbinding in
-                                      groupspecificparticipantdata.
-                                      participantgroupbinding_set.all()),
-                        ),
-                        reply_to_message_id=message["message_id"],
-                    )
-                    bot.delete_message(participant_group, message["message_id"])
-                    groupspecificparticipantdata.create_violation(
-                        get_from_Model(
-                            ViolationType,
-                            value='message_binding_low_permissions'))
-                    bot.offset = update["update_id"] + 1
-                    bot.save()
-                    continue
-
-            """ Processing text of the message if available """
-            if text:
-                # Processing variants
-                if len(text) == 1 and (
-                        ord(text) in range(ord("a"),
-                                           ord("e") + 1) or
-                        ord(text) in range(ord("A"),
-                                           ord("E") + 1)):
-                    if participant_group.activeProblem and BotBinding.objects.filter(
-                            bot=bot, participant_group=participant_group):
-                        participant_answering(
-                            participant,
-                            participant_group,
-                            participant_group.activeProblem,
-                            text,
-                            bot=bot,
-                            message=message)
-                # Processing commands
-                elif text[0] == "/" and len(text) > 1:
-                    command = text[1:].split(" ")[0].split('@')[0]
-                    if command in available_commands:
-                        max_priority_role = groupspecificparticipantdata.highest_role
-                        priority_level = max_priority_role.priority_level
-                        if (
-                                available_commands[command][1] == 'superadmin'
-                                and safe_getter(participant, 'superadmin')
-                        ) or priority_level >= available_commands[command][1]:
-                            if available_commands[command][2]:
-                                if not BotBinding.objects.filter(
-                                        bot=bot,
-                                        participant_group=participant_group):
-                                    bot.send_message(
-                                        participant_group,
-                                        "Hi, if you want to use this bot in "
-                                        "a new participant_group too, then contact with @KoStard",
-                                        reply_to_message_id=message[
-                                            "message_id"],
-                                    )
-                                    return
-                            available_commands[command][0](*(
-                                (bot, participant_group, text,
-                                 message) if available_commands[command][1] !=
-                                'superadmin' else (bot, message)))
-                        else:
-                            bot.send_message(
-                                participant_group,
-                                'Sorry dear {}, you don\'t have permission to use \
-                                command {} - your highest role is "{}".'.format(
-                                    participant, command,
-                                    max_priority_role.name),
-                                reply_to_message_id=message["message_id"],
-                            )
-                            groupspecificparticipantdata.create_violation(
-                                get_from_Model(
-                                    ViolationType,
-                                    value='command_low_permissions'))
-
-                    elif command:
-                        bot.send_message(
-                            participant_group,
-                            'Invalid command "{}"'.format(command),
-                            reply_to_message_id=message["message_id"],
-                        )
-            # participant.save() # Does not make sense saving the participant again here -> Nothing changed
+        handle_update(bot, update)
         bot.offset = update["update_id"] + 1
         bot.save()
 
@@ -644,15 +820,19 @@ def add_subject(bot, participant_group, text, message):
     pass
 
 
-def select_subject(bot: Bot, participant_group:ParticipantGroup, text:str, message:dict):
+def select_subject(bot: Bot, participant_group: ParticipantGroup, text: str,
+                   message: dict):
     """ Will select subject in the group 
     Give with message
      - index
     """
     ''.isnumeric
     if not ' ' in text or not text.split(' ')[1].isnumeric():
-        bot.send_message(participant_answering,"""You have to give the index of subject to select.
-You can get indexes with /subjects_list command.""", reply_to_message_id=message['message_id'])
+        bot.send_message(
+            participant_group,
+            """You have to give the index of subject to select.
+You can get indexes with /subjects_list command.""",
+            reply_to_message_id=message['message_id'])
         return
     index = int(text.split(' ')[1])
     subject_group_bindings = participant_group.subjectgroupbinding_set.all()
@@ -663,7 +843,8 @@ You can get indexes with /subjects_list command.""", reply_to_message_id=message
 You can get indexes with /subjects_list command.""",
             reply_to_message_id=message['message_id'])
         return
-    participant_group.activeSubjectGroupBinding = subject_group_bindings[index - 1]
+    participant_group.activeSubjectGroupBinding = subject_group_bindings[index
+                                                                         - 1]
     participant_group.activeProblem = None
     participant_group.save()
     bot.send_message(
@@ -673,7 +854,8 @@ You can get indexes with /subjects_list command.""",
         reply_to_message_id=message['message_id'])
 
 
-def active_subject(bot: Bot, participant_group: ParticipantGroup, text: str, message: dict):
+def active_subject(bot: Bot, participant_group: ParticipantGroup, text: str,
+                   message: dict):
     """ Will send active subject to the group if available """
     if participant_group.activeSubjectGroupBinding:
         bot.send_message(
@@ -693,14 +875,17 @@ def finish_subject(bot, participant_group, text, message):
     pass
 
 
-def get_subjects_list(bot: Bot, participant_group:ParticipantGroup, text, message):
+def get_subjects_list(bot: Bot, participant_group: ParticipantGroup, text,
+                      message):
     """ Will send subjects list for current group """
     bot.send_message(
         participant_group,
         """This is the subjects list for current group:
-{}""".format('\n'.join(' - '.join(str(e) for e in el) for el in enumerate(
-            (binding.subject.name
-            for binding in participant_group.subjectgroupbinding_set.all()), 1))),
+{}""".format('\n'.join(
+            ' - '.join(str(e) for e in el)
+            for el in enumerate((binding.subject.name
+                                 for binding in participant_group.
+                                 subjectgroupbinding_set.all()), 1))),
         reply_to_message_id=message['message_id'])
 
 
@@ -744,8 +929,8 @@ Variant e-[WRITE HERE YOUR TEXT]
 Right variant-[abcdeABCDE]"""
 
 
-def add_user_defined_problem(bot: Bot, participant_group: ParticipantGroup, text: str,
-                   message: dict):
+def add_user_defined_problem(bot: Bot, participant_group: ParticipantGroup,
+                             text: str, message: dict):
     """ Add User-defined Problem """
     pass
 
@@ -756,8 +941,8 @@ def start_in_administrator_page(bot: Bot, message):
         telegram_id=message["chat"]["id"],
         username=message["chat"].get("username"),
         title=message["chat"].get("title"),
-        type=(GroupType.objects.filter(name=message["chat"].get("type")) or
-              [None])[0],
+        type=(GroupType.objects.filter(name=message["chat"].get("type"))
+              or [None])[0],
     )
     administrator_page.save()
     bot.send_message(
@@ -784,20 +969,25 @@ def status_in_administrator_page(bot: Bot,
     try:
         answers = administrator_page.participant_group.activeProblem.answer_set.filter(
             processed=False,
-            group_specific_participant_data__participant_group=administrator_page.
-            participant_group)
+            group_specific_participant_data__participant_group=
+            administrator_page.participant_group)
     except AttributeError:  # If there is no active problem
         bot.send_message(
             administrator_page,
             """There is no active problem.""",
             reply_to_message_id=message['message_id'])
         return
-    answers_count = (el for el in ((variant, len([answer for answer in answers if answer.answer.upper() == variant])) for variant in 'ABCDE') if el[1])
+    answers_count = (el for el in ((
+        variant,
+        len([answer for answer in answers
+             if answer.answer.upper() == variant]))
+                                   for variant in 'ABCDE') if el[1])
     bot.send_message(
         administrator_page,
         """Current status is
 {}
-For more contact with @KoStard""".format('\n'.join('{} - {}'.format(*el) for el in answers_count)),
+For more contact with @KoStard""".format('\n'.join(
+            '{} - {}'.format(*el) for el in answers_count)),
         reply_to_message_id=message['message_id'])
 
 
@@ -819,7 +1009,8 @@ def register_participant_group(bot: Bot, message: dict):
     if not chat:
         logging.info("Can't get chat to register.")
         pass
-    participant_group = get_from_Model(ParticipantGroup, telegram_id=chat['id'])
+    participant_group = get_from_Model(
+        ParticipantGroup, telegram_id=chat['id'])
     if participant_group:
         bot.send_message(
             participant_group,
@@ -827,7 +1018,10 @@ def register_participant_group(bot: Bot, message: dict):
             reply_to_message_id=message['message_id']
         )  # Maybe add reference to the documentation with this message
     elif not tp:
-        bot.send_message(chat['id'], "Unknown type of group, to improve this connect with @KoStard.", reply_to_message_id=message['message_id'])
+        bot.send_message(
+            chat['id'],
+            "Unknown type of group, to improve this connect with @KoStard.",
+            reply_to_message_id=message['message_id'])
     else:
         participant_group = ParticipantGroup(
             telegram_id=chat['id'],
@@ -870,12 +1064,16 @@ available_commands = {
 def createGroupLeaderBoard(participant_group: ParticipantGroup):
     """ Will process and present the data for group leaderboards """
     gss = [{
-        "participant": gs.participant,
-        "score": gs.score,
-        "percentage": gs.percentage,
-        "standard_role": safe_getter(gs.highest_standard_role_binding, "role"),
-        "non_standard_role": safe_getter(gs.highest_non_standard_role_binding,
-                                         "role"),
+        "participant":
+        gs.participant,
+        "score":
+        gs.score,
+        "percentage":
+        gs.percentage,
+        "standard_role":
+        safe_getter(gs.highest_standard_role_binding, "role"),
+        "non_standard_role":
+        safe_getter(gs.highest_non_standard_role_binding, "role"),
     } for gs in sorted(
         (gs for gs in participant_group.groupspecificparticipantdata_set.all()
          if gs.score),
@@ -888,8 +1086,10 @@ def get_promoted_participants_list_for_leaderboard(
         participant_group: ParticipantGroup):
     """ Will process data of promoted participants for group leaderboards """
     admin_gss = [{
-        "participant": gs.participant,
-        "non_standard_role": gs.highest_non_standard_role_binding.role,
+        "participant":
+        gs.participant,
+        "non_standard_role":
+        gs.highest_non_standard_role_binding.role,
     } for gs in sorted(
         (gs for gs in participant_group.groupspecificparticipantdata_set.all()
          if gs.highest_non_standard_role_binding),
@@ -941,8 +1141,8 @@ def createGroupLeaderBoardForTelegraph(participant_group: ParticipantGroup,
                 DynamicTelegraphPageCreator.create_list_item(
                     DynamicTelegraphPageCreator.create_bold([
                         DynamicTelegraphPageCreator.create_code([
-                            DynamicTelegraphPageCreator.create_bold('{}'.format(
-                                gs['score'])), 'xp{}'.format(
+                            DynamicTelegraphPageCreator.create_bold(
+                                '{}'.format(gs['score'])), 'xp{}'.format(
                                     (' [{}%]'.format(gs['percentage'])
                                      if gs['percentage'] is not None else ''))
                         ]), ' - {}'.format(gs['participant'].full_name)
@@ -958,7 +1158,8 @@ def createGroupLeaderBoardForTelegraph(participant_group: ParticipantGroup,
                     ]), ' - {}'.format(gs['participant'].full_name)
                 ]))
     res.append(DynamicTelegraphPageCreator.hr)
-    res.append(DynamicTelegraphPageCreator.create_title(3, '{}'.format("Team")))
+    res.append(
+        DynamicTelegraphPageCreator.create_title(3, '{}'.format("Team")))
     ordered_list = DynamicTelegraphPageCreator.create_ordered_list()
     res.append(ordered_list)
     current_list = ordered_list['children']

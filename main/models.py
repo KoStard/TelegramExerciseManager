@@ -612,10 +612,12 @@ class GroupSpecificParticipantData(models.Model):
                 res = binding
         return res
 
-    def create_violation(self, type, date):
+    def create_violation(self, type, date=None):
         """ Will create a violation to this GroupSpecificParticipantData """
         violation = Violation(
-            groupspecificparticipantdata=self, date=date, type=type)
+            groupspecificparticipantdata=self,
+            date=date or timezone.now(),
+            type=type)
         violation.save()
         return violation
 
