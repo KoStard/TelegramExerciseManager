@@ -23,10 +23,12 @@ def sourced(func):
 # configure_logging()
 
 
-def adm_log(bot: Bot, participant_group: ParticipantGroup, message: str):
+def adm_log(bot: Bot, participant_group: ParticipantGroup or AdministratorPage, message: str):
     """ Will log to the administrator page if available """
     if hasattr(participant_group, 'administratorpage'):
         bot.send_message(participant_group.administratorpage, message)
+    elif isinstance(participant_group, AdministratorPage):
+        bot.send_message(participant_group, message)
 
 
 AVAILABLE_ENTITIES = {
