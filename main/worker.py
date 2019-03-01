@@ -995,11 +995,15 @@ def root_test(bot: Bot, administrator_page: AdministratorPage, text: str,
               message: dict) -> None:
     """ This is used for some root testings of the bot """
     ### Now will be used for image sending test
-    bot.send_image(
-        administrator_page,
-        open('../media/images/Photos/image005.png', 'rb'),
-        reply_to_message_id=message['message_id']
-    )  # Is working, so the bug with image sending is solved.
+    try:
+        bot.send_image(
+            administrator_page,
+            open('../media/images/Photos/image005.png', 'rb'),
+            reply_to_message_id=message['message_id']
+        )  # Is working, so the bug with image sending is solved.
+    except Exception as e:
+        print(e)
+        unilog("Can't send image in root_test")
 
 
 def register_participant_group(bot: Bot, message: dict):
