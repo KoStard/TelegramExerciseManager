@@ -62,7 +62,7 @@ class Problem(models.Model):
             self.index, ("\nFrom chapter: #{}".format(
                 self.chapter.replace(' ', '_').replace(':', '')) if self.chapter else ''),
             self.formulation,
-            ''.join(f'\n{variant.upper()} {getattr(self, f"variant_{variant.lower()}")}' if getattr(self, f"variant_{variant.lower()}")!="[[EMPTY]]" else "" for variant in 'abcde'),
+            ''.join(f'\n{variant.upper()}. {getattr(self, f"variant_{variant.lower()}")}' if getattr(self, f"variant_{variant.lower()}")!="[[EMPTY]]" else "" for variant in 'abcde'),
             ('' if self.has_next else '\n#last'))
 
     def get_answer(self):
