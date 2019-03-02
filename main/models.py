@@ -4,6 +4,7 @@ from main.universals import (get_response, configure_logging, safe_getter)
 import io
 import re
 import logging
+
 configure_logging()
 
 MESSAGE_MAX_LENGTH = 4096
@@ -44,25 +45,24 @@ class Problem(models.Model):
 
     index = models.IntegerField(null=True, blank=True)
     formulation = models.CharField(max_length=1500)
-    variant_a = models.CharField(max_length=150)
-    variant_b = models.CharField(max_length=150)
-    variant_c = models.CharField(max_length=150)
-    variant_d = models.CharField(max_length=150)
-    variant_e = models.CharField(max_length=150)
+    variant_a = models.CharField(max_length=300)
+    variant_b = models.CharField(max_length=300)
+    variant_c = models.CharField(max_length=300)
+    variant_d = models.CharField(max_length=300)
+    variant_e = models.CharField(max_length=300)
     answer_formulation = models.CharField(max_length=6000)
     right_variant = models.CharField(max_length=1)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     is_special = models.BooleanField(default=False)
-    img = models.ImageField(upload_to='images', null=True, blank=True)
     value = models.IntegerField(default=50)
-    chapter = models.CharField(max_length=150, null=True, blank=True)
+    chapter = models.CharField(max_length=300, null=True, blank=True)
 
     def __str__(self):
-        return """\\<b>#Problem N{}\\</b>{}\n{}\nA. {}\nB. {}\nC. {}\nD. {}\nE. {}{}""".format(
+        return """\\<b>#Problem N{}\\</b>{}\n{}{}{}""".format(
             self.index, ("\nFrom chapter: #{}".format(
-                self.chapter.replace(' ', '_')) if self.chapter else ''),
-            self.formulation, self.variant_a, self.variant_b, self.variant_c,
-            self.variant_d, self.variant_e,
+                self.chapter.replace(' ', '_').replace(':', '')) if self.chapter else ''),
+            self.formulation,
+            ''.join(f'\n{variant.upper()} {getattr(self, f"variant_{variant.lower()}")}' if getattr(self, f"variant_{variant.lower()}")!="[[EMPTY]]" else "" for variant in 'abcde'),
             ('' if self.has_next else '\n#last'))
 
     def get_answer(self):
@@ -148,7 +148,6 @@ class Problem(models.Model):
             'subject',
             'chapter',
             'is_special',
-            'img',
             'value',
         )
 
@@ -176,13 +175,26 @@ class ParticipantDefinedProblem(Problem):
             'participant',
             'formulation',
             'right_variant',
-            'img',
             'value',
         )
 
     class Meta:
         verbose_name = 'Participant-defined Problem'
         db_table = 'db_problem_participant_defined'
+
+
+class ProblemImage(models.Model):
+    """ Problem Image Model """
+    problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
+    image = models.ImageField()
+    for_answer = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'{"A" if self.for_answer else "P"}: {self.image} -> {self.problem}'
+
+    class Meta:
+        verbose_name = 'Problem Image'
+        db_table = 'db_problem_image'
 
 
 class GroupType(models.Model):
@@ -398,11 +410,11 @@ class Bot(User):
             url = self.base_url + 'sendMessage'
             payload = {
                 'chat_id':
-                group,
+                    group,
                 'text':
-                message.replace('<', '&lt;').replace('\\&lt;', '<'),
+                    message.replace('<', '&lt;').replace('\\&lt;', '<'),
                 'reply_to_message_id':
-                reply_to_message_id if not resp else resp[-1].get('message_id')
+                    reply_to_message_id if not resp else resp[-1].get('message_id')
             }
             if parse_mode:
                 payload['parse_mode'] = parse_mode
@@ -427,14 +439,13 @@ class Bot(User):
             'caption': caption,
             'reply_to_message_id': reply_to_message_id,
         }
-        print(image_file)
         files = {'photo': image_file}
         resp = get_response(url, payload=payload, files=files)
         logging.info(resp)
         return resp
 
     def delete_message(self, participant_group: str or Group, message_id: int
-                       or str):
+                                                                          or str):
         """ Will delete message from the group """
         if not (isinstance(participant_group, str)
                 or isinstance(participant_group, int)):
@@ -541,10 +552,10 @@ class GroupSpecificParticipantData(models.Model):
             new_role = [
                 st.role for st in ScoreThreshold.objects.all()
                 if st.range_min <= self.score and st.range_max >= self.score
-                and st.role.from_stardard_kit
+                   and st.role.from_stardard_kit
             ]
             if not new_role or new_role[
-                    0].priority_level <= standard_role.priority_level:
+                0].priority_level <= standard_role.priority_level:
                 return
             new_role = new_role[0]
             if new_role.priority_level == -1:
@@ -557,7 +568,7 @@ class GroupSpecificParticipantData(models.Model):
             new_role = [
                 st.role for st in ScoreThreshold.objects.all()
                 if st.range_min <= self.score and st.range_max >= self.score
-                and st.role.from_stardard_kit
+                   and st.role.from_stardard_kit
             ]
             if not new_role:
                 return

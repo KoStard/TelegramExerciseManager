@@ -32,7 +32,6 @@ class ProblemAdmin(admin.ModelAdmin):
         "subject",
         "chapter",
         "is_special",
-        "img",
         "value",
     )
 
@@ -45,8 +44,17 @@ class ParticipantDefinedProblemAdmin(admin.ModelAdmin):
         "participant",
         "formulation",
         "right_variant",
-        "img",
         "value",
+    )
+
+
+@admin.register(ProblemImage)
+class ProblemImageAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "problem",
+        "image",
+        "for_answer",
     )
 
 

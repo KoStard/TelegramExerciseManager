@@ -6,6 +6,7 @@ from time import sleep
 from datetime import datetime
 import logging
 from functools import wraps
+
 """
 Will contain here whole update data in a dict
 - last element is the dict
@@ -17,6 +18,7 @@ def sourced(func):
     @wraps(func)
     def inner(*, from_args=False, **kwargs):
         return func(DATA_STACK[-1] if not from_args else kwargs)
+
     return inner
 
 
@@ -65,7 +67,7 @@ def check_entities(source):
             resp["status"] = False
             resp[
                 "cause"] = "{} entity is not allowed for users with priority level lower than {}".format(
-                    entity, AVAILABLE_ENTITIES[entity])
+                entity, AVAILABLE_ENTITIES[entity])
             break
     return resp
 
@@ -91,14 +93,14 @@ def check_message_bindings(source):
         'groupspecificparticipantdata'].highest_role.priority_level
     for message_binding in AVAILABLE_MESSAGE_BINDINGS:
         if message_binding in source['message'] and AVAILABLE_MESSAGE_BINDINGS[
-                message_binding] > priority_level:
+            message_binding] > priority_level:
             if resp["status"]: resp["status"] = False
             if "cause" not in resp:
                 resp["cause"] = []
             resp["cause"].append(
                 "\"{}\" message binding is not allowed for users with priority level lower than {}"
-                .format(message_binding,
-                        AVAILABLE_MESSAGE_BINDINGS[message_binding]))
+                    .format(message_binding,
+                            AVAILABLE_MESSAGE_BINDINGS[message_binding]))
     return resp
 
 
@@ -120,7 +122,7 @@ def get_updates(bot: Bot, *, update_last_updated=True, timeout=60):
         payload={
             'offset': bot.offset or "",  # Setting offset
             'timeout':
-            timeout  # Setting timeout to delay empty updates handling
+                timeout  # Setting timeout to delay empty updates handling
         })
     if update_last_updated:
         bot.last_updated = timezone.now()
@@ -162,19 +164,19 @@ def create_log_from_message(source) -> str:
     """ Creating log from Telegram message """
     name = source['participant'].name
     data = (
-        (source['raw_text'] or '') +
-        ('' if not source['entities'] else
-         '\nFound entities: ' + ', '.join(entity['type']
-                                          for entity in source['entities']))
-    ) or ', '.join(
+                   (source['raw_text'] or '') +
+                   ('' if not source['entities'] else
+                    '\nFound entities: ' + ', '.join(entity['type']
+                                                     for entity in source['entities']))
+           ) or ', '.join(
         message_binding for message_binding in AVAILABLE_MESSAGE_BINDINGS
         if message_binding in source['message']) or (
-            ("New chat member" if len(source['message']['new_chat_members']) ==
-             1 and source['message']['new_chat_members'][0]['id'] ==
-             source['participant'].id else 'Invited {}'.format(', '.join(
-                 user['first_name'] or user['last_name'] or user['username']
-                 for user in source['message'].get('new_chat_members'))))
-            if 'new_chat_members' in source['message'] else '')
+               ("New chat member" if len(source['message']['new_chat_members']) ==
+                                     1 and source['message']['new_chat_members'][0]['id'] ==
+                                     source['participant'].id else 'Invited {}'.format(', '.join(
+                   user['first_name'] or user['last_name'] or user['username']
+                   for user in source['message'].get('new_chat_members'))))
+               if 'new_chat_members' in source['message'] else '')
     result = f"{name} -> {data}"
     return result
 
@@ -306,8 +308,8 @@ def handle_entities(source) -> bool:
                         participantgroupbinding.role.name,
                         participantgroupbinding.role.priority_level,
                     ) for participantgroupbinding in
-                                source['groupspecificparticipantdata'].
-                                participantgroupbinding_set.all())
+                              source['groupspecificparticipantdata'].
+                              participantgroupbinding_set.all())
                     or '-',
                 ),
                 reply_to_message_id=source['message']["message_id"],
@@ -343,8 +345,8 @@ def handle_message_bindings(source) -> bool:
                         participantgroupbinding.role.name,
                         participantgroupbinding.role.priority_level,
                     ) for participantgroupbinding in
-                                source['groupspecificparticipantdata'].
-                                participantgroupbinding_set.all()),
+                              source['groupspecificparticipantdata'].
+                              participantgroupbinding_set.all()),
                 ),
                 reply_to_message_id=source['message']["message_id"],
             )
@@ -456,8 +458,8 @@ def handle_pgm_text(source):
 def handle_superadmin_commands_in_pg(source):
     available_commands[
         source['command']][0](  # These functions will becose sourced too soon
-            source['bot'], source['participant_group'], source['raw_text'],
-            source['message'])
+        source['bot'], source['participant_group'], source['raw_text'],
+        source['message'])
 
 
 @sourced
@@ -493,11 +495,11 @@ def handle_pgm_commands(source):
             'groupspecificparticipantdata'].highest_role.priority_level
         if (available_commands[source['command']][1] == 'superadmin'
                 and safe_getter(source['participant'], 'superadmin')
-            ):
+        ):
             handle_superadmin_commands_in_pg()
         elif (safe_getter(source['participant'], 'superadmin')
               or priority_level >= available_commands[source['command']][1]
-              ) and source['command'] != 'status':
+        ) and source['command'] != 'status':
             accept_command_in_pg()
         else:
             reject_command_in_pg()
@@ -533,8 +535,8 @@ def handle_message_from_administrator_page(source):
         return  # Just text
     if source['command'] in available_commands:
         if (
-            available_commands[source['command']][1] == 'superadmin'
-            or source['command'] == 'status'
+                available_commands[source['command']][1] == 'superadmin'
+                or source['command'] == 'status'
         ) and available_commands[source['command']][2]:
             available_commands[source['command']][0](
                 source['bot'], source['administrator_page'],
@@ -556,7 +558,7 @@ def handle_message_from_superadmin(source):
     """ Will handle message from superadmin 
     that are not in the administrator page """
     if source['command'] in available_commands and not available_commands[
-            source['command']][2]:
+        source['command']][2]:
         available_commands[source['command']][0](source['bot'],
                                                  source['message'])
 
@@ -579,7 +581,7 @@ def handle_message_from_unregistered_group(source):
             "If you want to use this bot in your groups too, then connect with @KoStard.",
             reply_to_message_id=source['message']['message_id'])
     else:
-        pass # When getting simple messages
+        pass  # When getting simple messages
 
 
 @sourced
@@ -602,15 +604,16 @@ def handle_message_from_user(source):
     save_to_data_stack(raw_text=source['message'].get("text"))
     save_to_data_stack(
         command=source['raw_text'][1:].split(" ")[0].
-        split('@')[0] if source['raw_text'] and source['raw_text'][0] == '/' else '') # This won't work with multiargumental commands
+            split('@')[0] if source['raw_text'] and source['raw_text'][
+            0] == '/' else '')  # This won't work with multiargumental commands
     save_to_data_stack(
         text=source['raw_text'] if not source['command'] else None)
 
-    #Checking if the group is registered
+    # Checking if the group is registered
     save_to_data_stack(
         participant_group=get_from_Model(
             ParticipantGroup, telegram_id=source["message"]["chat"]["id"]))
-    #Checking if is a superadmin
+    # Checking if is a superadmin
     is_superadmin = not not SuperAdmin.objects.filter(user__id=source['message']['from']['id'])
     save_to_data_stack(is_superadmin=is_superadmin)
     # Checking if in an administrator page
@@ -693,14 +696,18 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
                 reply_to_message_id=message["message_id"],
             )
             return
+    # if any(variant == '[[EMPTY]]' for variant in (problem.variant_a, problem.variant_b, problem.variant_c, problem.variant_d, problem.variant_e)):
+    #     unilog(f"The problem {problem.index} is empty, the logic is not created yet")
+    #     return
     form_resp = bot.send_message(participant_group, str(problem))
     logging.debug("Sending problem {}".format(problem.index))
     logging.debug(form_resp)
-    if problem.img and form_resp:
+    for problemimage in problem.problemimage_set.filter(for_answer=False):
+        image = problemimage.image
         try:
             bot.send_image(
                 participant_group,
-                open("../media/" + problem.img.name, "rb"),
+                open(image.path, "rb"),
                 reply_to_message_id=form_resp[0].get(
                     "message_id"),  # Temporarily disabling
                 caption="Image of problem N{}.".format(problem.index),
@@ -708,15 +715,15 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
             logging.debug("Sending image for problem {}".format(problem.index))
             adm_log(
                 bot, participant_group, "Sent image {} for problem N{}".format(
-                    problem.img, problem.index))
+                    image, problem.index))
         except Exception as e:
-            print("Can't send image {}".format(problem.img))
+            print("Can't send image {}".format(image))
             print(e)
             logging.info(e)
             adm_log(
                 bot, participant_group,
                 "Can't send image {} for problem N{}".format(
-                    problem.img, problem.index))
+                    image, problem.index))
     participant_group.activeProblem = problem
     participant_group.save()
     participant_group.activeSubjectGroupBinding.last_problem = problem
@@ -751,8 +758,50 @@ def answer_problem(bot, participant_group, text, message):
                                  "Invalid problem number {}.")
             else:
                 bot.send_message(participant_group, problem.get_answer())
+                for problemimage in problem.problemimage_set.filter(for_answer=True):
+                    image = problemimage.image
+                    try:
+                        bot.send_image(
+                            participant_group,
+                            open(image.path, "rb"),
+                            caption="Image of problem N{}'s answer.".format(problem.index),
+                        )
+                        logging.debug("Sending image for problem {}'s answer".format(problem.index))
+                        print("Sending image for problem {}'s answer".format(problem.index))
+                        adm_log(
+                            bot, participant_group, "Sent image {} for problem N{}'s answer".format(
+                                image, problem.index))
+                    except Exception as e:
+                        print("Can't send image {}".format(image))
+                        print(e)
+                        logging.info(e)
+                        adm_log(
+                            bot, participant_group,
+                            "Can't send image {} for problem N{}'s answer.".format(
+                                image, problem.index))
             return
     bot.send_message(participant_group, problem.get_answer())
+    for problemimage in problem.problemimage_set.filter(for_answer=True):
+        image = problemimage.image
+        try:
+            bot.send_image(
+                participant_group,
+                open(image.path, "rb"),
+                caption="Image of problem N{}'s answer.".format(problem.index),
+            )
+            logging.debug("Sending image for problem {}'s answer".format(problem.index))
+            print("Sending image for problem {}'s answer".format(problem.index))
+            adm_log(
+                bot, participant_group, "Sent image {} for problem N{}'s answer".format(
+                    image, problem.index))
+        except Exception as e:
+            print("Can't send image {}".format(image))
+            print(e)
+            logging.info(e)
+            adm_log(
+                bot, participant_group,
+                "Can't send image {} for problem N{}'s answer.".format(
+                    image, problem.index))
     bot.send_message(participant_group, problem.close(participant_group))
     t_pages = participant_group.telegraphpage_set.all()
     if t_pages:  # Create the page manually with DynamicTelegraphPageCreator
@@ -779,7 +828,7 @@ def cancel_problem(bot: Bot, participant_group: ParticipantGroup, text: str,
                 problem=participant_group.activeProblem)
         ]
         for answer in answers:
-            answer.destroy()
+            answer.delete()
         participant_group.activeSubjectGroupBinding.last_problem = participant_group.activeProblem.previous
         participant_group.activeSubjectGroupBinding.save()
         temp_problem = participant_group.activeProblem
@@ -888,7 +937,7 @@ def get_subjects_list(bot: Bot, participant_group: ParticipantGroup, text,
             ' - '.join(str(e) for e in el)
             for el in enumerate((binding.subject.name
                                  for binding in participant_group.
-                                 subjectgroupbinding_set.all()), 1))),
+                                subjectgroupbinding_set.all()), 1))),
         reply_to_message_id=message['message_id'])
 
 
@@ -984,7 +1033,7 @@ def status_in_administrator_page(bot: Bot,
         variant,
         len([answer for answer in answers
              if answer.answer.upper() == variant]))
-                                   for variant in 'ABCDE') if el[1])
+        for variant in 'ABCDE') if el[1])
     bot.send_message(
         administrator_page,
         """Current status is
@@ -1045,7 +1094,7 @@ so now the bot will listen to your commands.""",
             reply_to_message_id=message['message_id'])
 
 
-#- (function, min_priority_level, needs_binding)
+# - (function, min_priority_level, needs_binding)
 available_commands = {
     "send": (send_problem, 6, True),
     "answer": (answer_problem, 6, True),
@@ -1072,15 +1121,15 @@ def createGroupLeaderBoard(participant_group: ParticipantGroup):
     """ Will process and present the data for group leaderboards """
     gss = [{
         "participant":
-        gs.participant,
+            gs.participant,
         "score":
-        gs.score,
+            gs.score,
         "percentage":
-        gs.percentage,
+            gs.percentage,
         "standard_role":
-        safe_getter(gs.highest_standard_role_binding, "role"),
+            safe_getter(gs.highest_standard_role_binding, "role"),
         "non_standard_role":
-        safe_getter(gs.highest_non_standard_role_binding, "role"),
+            safe_getter(gs.highest_non_standard_role_binding, "role"),
     } for gs in sorted(
         (gs for gs in participant_group.groupspecificparticipantdata_set.all()
          if gs.score),
@@ -1094,9 +1143,9 @@ def get_promoted_participants_list_for_leaderboard(
     """ Will process data of promoted participants for group leaderboards """
     admin_gss = [{
         "participant":
-        gs.participant,
+            gs.participant,
         "non_standard_role":
-        gs.highest_non_standard_role_binding.role,
+            gs.highest_non_standard_role_binding.role,
     } for gs in sorted(
         (gs for gs in participant_group.groupspecificparticipantdata_set.all()
          if gs.highest_non_standard_role_binding),
@@ -1150,8 +1199,8 @@ def createGroupLeaderBoardForTelegraph(participant_group: ParticipantGroup,
                         DynamicTelegraphPageCreator.create_code([
                             DynamicTelegraphPageCreator.create_bold(
                                 '{}'.format(gs['score'])), 'xp{}'.format(
-                                    (' [{}%]'.format(gs['percentage'])
-                                     if gs['percentage'] is not None else ''))
+                                (' [{}%]'.format(gs['percentage'])
+                                 if gs['percentage'] is not None else ''))
                         ]), ' - {}'.format(gs['participant'].full_name)
                     ])))
         else:
@@ -1160,8 +1209,8 @@ def createGroupLeaderBoardForTelegraph(participant_group: ParticipantGroup,
                     DynamicTelegraphPageCreator.create_code([
                         DynamicTelegraphPageCreator.create_bold('{}'.format(
                             gs['score'])), 'xp{}'.format(
-                                (' [{}%]'.format(gs['percentage'])
-                                 if gs['percentage'] is not None else ''))
+                            (' [{}%]'.format(gs['percentage'])
+                             if gs['percentage'] is not None else ''))
                     ]), ' - {}'.format(gs['participant'].full_name)
                 ]))
     res.append(DynamicTelegraphPageCreator.hr)
