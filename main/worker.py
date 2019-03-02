@@ -278,7 +278,7 @@ def register_participant_group_new_members(source) -> list:
                 participant=participant,
                 participant_group=source['participant_group'],
                 joined=datetime.fromtimestamp(
-                    message["date"], tz=timezone.get_current_timezone()),
+                    source['message']["date"], tz=timezone.get_current_timezone()),
             )
         new_members.append((participant, gspd))
     save_to_data_stack(new_members_models=new_members)
