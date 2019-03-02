@@ -272,7 +272,7 @@ def register_participant_group_new_members(source) -> list:
             participant = register_participant(new_member_data)
         gspd = get_from_Model(
             participant.groupspecificparticipantdata_set,
-            participant_group=source['participant_group'])
+            participant_group=source['participant_group'], _mode='direct')
         if not gspd:
             gspd = register_groupspecificparticipantdata(
                 participant=participant,
