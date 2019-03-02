@@ -187,7 +187,8 @@ def unilog(log: str) -> None:
     """
     print(log)  # Logging to stdout
     logging.info(f'{timezone.now()} | {log}')  # Logging to logs file
-    adm_log(DATA_STACK[-1]['bot'], DATA_STACK[-1]['administrator_page'],
+    adm_log(DATA_STACK[-1]['bot'], DATA_STACK[-1]['participant_group']
+            or DATA_STACK[-1]['administrator_page'],
             log)  # Logging to administrator page
 
 
