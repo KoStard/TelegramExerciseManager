@@ -58,22 +58,3 @@ if __name__ == '__main__':
         load_problems(sys.argv[1])
     else:
         load_problems("../local/ConvertingProblems/PreTest-Physiology/Text+Image-success-1.json")
-
-from main.models import Subject, ProblemImage
-subject = Subject.objects.get(value='pretest_physiology_2013')
-for problem in data:
-    p = subject.problem_set.get(index=problem['index']+1)
-    for img in problem['images']:
-        image = ProblemImage(
-            problem=p,
-            image=File(open(img, 'rb')),
-            for_answer=False
-        )
-        image.save()
-    for img in problem['answer_images']:
-        image = ProblemImage(
-            problem=p,
-            image=File(open(img, 'rb')),
-            for_answer=True
-        )
-        image.save()

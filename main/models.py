@@ -62,7 +62,9 @@ class Problem(models.Model):
             self.index, ("\nFrom chapter: #{}".format(
                 self.chapter.replace(' ', '_').replace(':', '')) if self.chapter else ''),
             self.formulation,
-            ''.join(f'\n{variant.upper()}. {getattr(self, f"variant_{variant.lower()}")}' if getattr(self, f"variant_{variant.lower()}")!="[[EMPTY]]" else "" for variant in 'abcde'),
+            ''.join(f'\n{variant.upper()}. {getattr(self, f"variant_{variant.lower()}")}' if getattr(self,
+                                                                                                     f"variant_{variant.lower()}") != "[[EMPTY]]" else ""
+                    for variant in 'abcde'),
             ('' if self.has_next else '\n#last'))
 
     def get_answer(self):
@@ -70,7 +72,7 @@ class Problem(models.Model):
         return """\\<b>The right choice is {}\\</b>\n{}\n#Answer to {}\n""".format(
             self.right_variant.upper(), self.answer_formulation, self.index)
 
-    def close(self, participant_group):
+    def close(self, participant_group, testing_mode=False):
         """ Will close the problem for participant group """
         answers = sorted(
             self.answer_set.filter(
@@ -79,9 +81,15 @@ class Problem(models.Model):
                 processed=False),
             key=lambda answer: answer.id
         )  # Getting both right and wrong answers -> have to be processed
-        for answer in answers:
-            answer.process()
-            answer.group_specific_participant_data.recalculate_roles()
+        if testing_mode:
+            # Don't processing answers when in testing mode
+            for answer in answers:
+                answer.processed = True
+                answer.save()
+        else:
+            for answer in answers:
+                answer.process()
+                answer.group_specific_participant_data.recalculate_roles()
         return self.get_leader_board(
             participant_group,
             answers=[answer for answer in answers if answer.right
