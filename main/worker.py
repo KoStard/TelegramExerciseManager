@@ -164,19 +164,19 @@ def create_log_from_message(source) -> str:
     """ Creating log from Telegram message """
     name = source['participant'].name
     data = (
-                   (source['raw_text'] or '') +
-                   ('' if not source['entities'] else
-                    '\nFound entities: ' + ', '.join(entity['type']
-                                                     for entity in source['entities']))
-           ) or ', '.join(
+        (source['raw_text'] or '') +
+        ('' if not source['entities'] else
+         '\nFound entities: ' + ', '.join(entity['type']
+                                          for entity in source['entities']))
+    ) or ', '.join(
         message_binding for message_binding in AVAILABLE_MESSAGE_BINDINGS
-        if message_binding in source['message']) or (
-               ("New chat member" if len(source['message']['new_chat_members']) ==
-                                     1 and source['message']['new_chat_members'][0]['id'] ==
-                                     source['participant'].id else 'Invited {}'.format(', '.join(
-                   user['first_name'] or user['last_name'] or user['username']
-                   for user in source['message'].get('new_chat_members'))))
-               if 'new_chat_members' in source['message'] else '')
+        if message_binding in source['message']
+    ) or (("New chat member" if len(source['message']['new_chat_members']) == 1
+           and source['message']['new_chat_members'][0]['id'] ==
+           source['message']['from']['id'] else 'Invited {}'.format(', '.join(
+               user['first_name'] or user['last_name'] or user['username']
+               for user in source['message'].get('new_chat_members'))))
+          if 'new_chat_members' in source['message'] else '')
     result = f"{name} -> {data}"
     return result
 
