@@ -420,6 +420,14 @@ def accept_answer(source) -> Answer:
 
 
 @sourced
+def handle_answers_from_testing_bots(source):
+    """
+    Will handle answers from testing bots
+    """
+    unilog("Answer from testing bot's controlling groups")
+
+
+@sourced
 def handle_answer(source):
     """
     Will handle participant answers
@@ -436,10 +444,10 @@ def handle_answer(source):
     save_to_data_stack(old_answer=old_answer)
     if old_answer:
         handle_answer_change()
-    elif not source['bot'].for_testing:
-        accept_answer()
+    elif source['bot'].for_testing:
+        handle_answers_from_testing_bots()
     else:
-        print("Won't accept answer", source['bot'].for_testing)
+        accept_answer()
 
 
 @sourced

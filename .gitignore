@@ -5,3 +5,4 @@ media
 settings.py
 logs.txt
 *.pyc
+main/local/*
