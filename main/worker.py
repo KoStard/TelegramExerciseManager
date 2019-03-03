@@ -436,8 +436,10 @@ def handle_answer(source):
     save_to_data_stack(old_answer=old_answer)
     if old_answer:
         handle_answer_change()
-    else:
+    elif not source['bot'].for_testing:
         accept_answer()
+    else:
+        print("Won't accept answer", source['bot'].for_testing)
 
 
 @sourced
