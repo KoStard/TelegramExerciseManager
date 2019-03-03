@@ -301,7 +301,7 @@ def handle_entities(source) -> bool:
             source['bot'].send_message(
                 source['participant_group'],
                 "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                \nFor more information contact with @KoStard".format(
+                \nFor more information contact with @KoStard"                                                                                                                          .format(
                     source['participant'].name,
                     entities_check_response["cause"],
                     ", ".join("{} - {}".format(
@@ -338,7 +338,7 @@ def handle_message_bindings(source) -> bool:
             source['bot'].send_message(
                 source['participant_group'],
                 "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                \nFor more information contact with @KoStard".format(
+                \nFor more information contact with @KoStard"                                                                                                                          .format(
                     source['participant'].name,
                     ', '.join(message_bindings_check_response["cause"]),
                     ", ".join("{} - {}".format(
@@ -484,7 +484,7 @@ def reject_command_in_pg(source):
     source['bot'].send_message(
         source['participant_group'],
         'Sorry dear {}, you don\'t have permission to use \
-                command {} - your highest role is "{}".'.format(
+                command {} - your highest role is "{}".'                                                                                                                .format(
             source['participant'], source['command'],
             source['groupspecificparticipantdata'].highest_role.name),
         reply_to_message_id=source['message']["message_id"],
@@ -1046,10 +1046,11 @@ def status_in_administrator_page(bot: Bot,
         for variant in 'ABCDE') if el[1])
     bot.send_message(
         administrator_page,
-        """Current status is
-{}
-For more contact with @KoStard""".format('\n'.join(
-            '{} - {}'.format(*el) for el in answers_count)),
+        """Current status for problem {} is{}
+For more contact with @KoStard""".format(
+            administrator_page.participant_group.activeProblem.index,
+            ''.join('\n{} - {}'.format(*el) for el in answers_count)
+            if answers_count else ' - No one answered.'),
         reply_to_message_id=message['message_id'])
 
 
