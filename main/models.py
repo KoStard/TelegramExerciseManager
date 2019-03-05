@@ -646,9 +646,9 @@ class GroupSpecificParticipantData(models.Model):
         """
         Will return True if the participant is admin in current group
         """
-        return self.highest_non_standard_role_binding.role >= Role.objects.get(
+        ns_role_binding = self.highest_non_standard_role_binding
+        return ns_role_binding and ns_role_binding.role >= Role.objects.get(
             value='admin')  # Will raise error if the database is not filled
-
 
     def create_violation(self, type, date=None):
         """ Will create a violation to this GroupSpecificParticipantData """
