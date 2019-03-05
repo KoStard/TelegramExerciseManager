@@ -14,6 +14,12 @@ Will contain here whole update data in a dict
 """
 DATA_STACK = []
 
+"""
+Will contain some function relations and arguments to run them after a command is processed
+{bot_object_id: [{func: f, args: [], kwargs: {}}]}
+"""
+POST_PROCESSING_STACK = {}
+
 
 def sourced(func):
     @wraps(func)
@@ -21,6 +27,27 @@ def sourced(func):
         return func(DATA_STACK[-1] if not from_args else kwargs)
 
     return inner
+
+
+def add_to_post_processing_stack(bot: Bot, func, *args, **kwargs):
+    """
+    :param bot: current bot object
+    :param func: has to be either function or dict with func key that relates to a function
+    :param args: has to be used when the func is function
+    :param kwargs: has to be used when the func is function
+    :return:
+    """
+    if bot.id not in POST_PROCESSING_STACK:
+        POST_PROCESSING_STACK[bot.id] = []
+    if isinstance(func, dict):
+        POST_PROCESSING_STACK[bot.id].append(func)
+    else:
+        POST_PROCESSING_STACK[bot.id].append({
+            'func': func,
+            'args': args,
+            'kwargs': kwargs
+        })
+
 
 
 # configure_logging()
@@ -129,6 +156,14 @@ def get_updates(bot: Bot, *, update_last_updated=True, timeout=60):
         bot.last_updated = timezone.now()
         bot.save()
     return updates
+
+
+def run_post_processing_functions(bot: Bot):
+    # Can't be sourced, because this has to be called after the bot's offset is changed
+    funcs = POST_PROCESSING_STACK[bot.id]
+    del POST_PROCESSING_STACK[bot.id]
+    for func_data in funcs:
+        func_data['func'](*(func_data.get('args') or []), **(func_data.get('kwargs') or {}))
 
 
 def handle_update(bot, update, *, catch_exceptions=False) -> bool:
@@ -678,6 +713,7 @@ def update_bot(bot: Bot, *, timeout=60):
         handle_update(bot, update)
         bot.offset = update["update_id"] + 1
         bot.save()
+        run_post_processing_functions(bot)
 
 
 def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
@@ -895,7 +931,6 @@ def select_subject(bot: Bot, participant_group: ParticipantGroup, text: str,
     Give with message
      - index
     """
-    ''.isnumeric
     if not ' ' in text or not text.split(' ')[1].isnumeric():
         bot.send_message(
             participant_group,
@@ -1119,8 +1154,8 @@ def handle_restart_command(source):
     - Maybe will result to problems when in multi-bot mode, because will restart the program, while other
         bot's commands are being processed
     """
-    unilog("Restarting")
-    update_and_restart()
+    unilog("Has to restart")
+    add_to_post_processing_stack(source['bot'], update_and_restart)
 
 
 # - (function, min_priority_level, needs_binding)
