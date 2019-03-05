@@ -1,5 +1,5 @@
 from main.models import *
-from main.universals import get_response, configure_logging, safe_getter, get_from_Model
+from main.universals import get_response, configure_logging, safe_getter, get_from_Model, update_and_restart
 from main.dynamic_telegraph_page_creator import DynamicTelegraphPageCreator
 from django.utils import timezone
 from time import sleep
@@ -10,13 +10,14 @@ from functools import wraps
 """
 Will contain here whole update data in a dict
 - last element is the dict
+- won't work with multiple bots - multiple threads will work on same stack element
 """
 DATA_STACK = []
 
 
 def sourced(func):
     @wraps(func)
-    def inner(*, from_args=False, **kwargs):
+    def inner(*args, from_args=False, **kwargs):  # args are not used, will stay it here while integrating with commands
         return func(DATA_STACK[-1] if not from_args else kwargs)
 
     return inner
@@ -1111,6 +1112,17 @@ so now the bot will listen to your commands.""",
             reply_to_message_id=message['message_id'])
 
 
+@sourced
+def handle_restart_command(source):
+    """
+    Will restart the script
+    - Maybe will result to problems when in multi-bot mode, because will restart the program, while other
+        bot's commands are being processed
+    """
+    unilog("Restarting")
+    update_and_restart()
+
+
 # - (function, min_priority_level, needs_binding)
 available_commands = {
     "send": (send_problem, 6, True),
@@ -1131,6 +1143,7 @@ available_commands = {
     "status": (status_in_administrator_page, 8, True),
     "root_test": (root_test, 'superadmin', True),
     "register": (register_participant_group, 'superadmin', False),
+    "restart": (handle_restart_command, 'superadmin', True),
 }
 
 

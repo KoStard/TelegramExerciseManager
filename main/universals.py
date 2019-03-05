@@ -2,6 +2,10 @@ import requests
 import json
 import logging
 import urllib
+from django.core.management import call_command
+import os
+import sys
+import platform
 
 
 def get_response(url, *, payload=None, files=None, use_post=False):
@@ -81,3 +85,17 @@ def safe_getter(model: object or dict, path: str, default=None, mode='OBJECT'):
         else:
             return default
     return current
+
+
+def update_and_restart():
+    """
+    Will run migrations and restart the program
+    """
+    if platform.system() == 'Windows':
+        print('Can\'t restart script in Windows.')
+        return -1
+    call_command('migrate')  # Test
+    # Restarting the script if on macOS or Linux -> has to be executable -> chmod a+x runner.py
+    # Won't match new python files
+    print("Migrating...")
+    os.execv(sys.executable, ['python3.7'] + sys.argv)

@@ -9,7 +9,6 @@ All logs are collected in the logs.txt.
 
 import sys
 import os
-import platform
 import logging
 import time
 from datetime import datetime
@@ -44,8 +43,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE',
 django.setup()
 from django.utils import timezone
 from main.worker import *
-from django.core.management import call_command
-
+from main.universals import (update_and_restart)
 running = True
 file_checks = 0
 
@@ -114,12 +112,8 @@ def run(bots, *, testing=False):
     for t in ts:
         t.join()
 
-    if autorestart and platform.system() != 'Windows' and not running:
-        call_command('migrate') # Test
-        # Restarting the script if on macOS or Linux -> has to be executable -> chmod a+x runner.py
-        # Won't match new python files
-        print("Migrating...")
-        os.execv(sys.executable,['python3.7']+ sys.argv)
+    if autorestart and not running:
+        update_and_restart()
 
 
 if __name__ == '__main__':
