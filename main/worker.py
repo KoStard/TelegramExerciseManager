@@ -166,7 +166,7 @@ def create_log_from_message(source) -> str:
     if source['groupspecificparticipantdata'].is_admin:
         pr_m = '🛡️'
     else:
-        pr_m = '⭐' * source['groupspecificparticipantdata'].highest_standard_role_binding.role.priority_level
+        pr_m = '⭐' * max(source['groupspecificparticipantdata'].highest_standard_role_binding.role.priority_level, 0)
 
     if pr_m:
         pr_m += ' '
