@@ -4,6 +4,7 @@ from main.universals import (get_response, configure_logging, safe_getter)
 import io
 import re
 import logging
+from main.universals import get_from_Model
 
 configure_logging()
 
@@ -616,7 +617,7 @@ class GroupSpecificParticipantData(models.Model):
         return res
 
     @property
-    def highest_non_standard_role_binding(self):
+    def highest_non_standard_role_binding(self) -> ParticipantGroupBinding:
         """ Will return user's highest non-standard role binding in the group """
         res = None
         for binding in self.participantgroupbinding_set.filter(
@@ -624,6 +625,15 @@ class GroupSpecificParticipantData(models.Model):
             if not res or binding.role.priority_level > res.role.priority_level:
                 res = binding
         return res
+
+    @property
+    def is_admin(self) -> bool:
+        """
+        Will return True if the participant is admin in current group
+        """
+        return self.highest_non_standard_role_binding.role.priority_level >= Role.objects.get(
+            value='admin')  # Will raise error if the database is not filled
+
 
     def create_violation(self, type, date=None):
         """ Will create a violation to this GroupSpecificParticipantData """

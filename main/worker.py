@@ -162,6 +162,10 @@ def handle_update(bot, update, *, catch_exceptions=False) -> bool:
 @sourced
 def create_log_from_message(source) -> str:
     """ Creating log from Telegram message """
+    pr_m = ''
+    if source['groupspecificparticipantdata'].is_admin:
+        pr_m = '🛡️'
+    
     name = source['participant'].name
     data = (
         (source['raw_text'] or '') +
