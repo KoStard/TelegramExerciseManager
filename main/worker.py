@@ -160,6 +160,8 @@ def get_updates(bot: Bot, *, update_last_updated=True, timeout=60):
 
 def run_post_processing_functions(bot: Bot):
     # Can't be sourced, because this has to be called after the bot's offset is changed
+    if bot.id not in POST_PROCESSING_STACK:
+        return
     funcs = POST_PROCESSING_STACK[bot.id]
     del POST_PROCESSING_STACK[bot.id]
     for func_data in funcs:
