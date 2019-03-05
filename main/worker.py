@@ -493,8 +493,8 @@ def accept_command_in_pg(source):
 def reject_command_in_pg(source):
     source['bot'].send_message(
         source['participant_group'],
-        'Sorry dear {}, you don\'t have permission to use \
-                command {} - your highest role is "{}".'.format(
+        ('Sorry dear {}, you don\'t have permission to use ' +
+         'command "{}" - your highest role is "{}".').format(
             source['participant'], source['command'],
             source['groupspecificparticipantdata'].highest_role.name),
         reply_to_message_id=source['message']["message_id"],
