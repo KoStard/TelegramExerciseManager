@@ -162,26 +162,31 @@ def handle_update(bot, update, *, catch_exceptions=False) -> bool:
 @sourced
 def create_log_from_message(source) -> str:
     """ Creating log from Telegram message """
-    pr_m = ''
+    pr_m = ''  # Priority marker
     if source['groupspecificparticipantdata'].is_admin:
         pr_m = '🛡️'
-    
+    else:
+        pr_m = '⭐' * source['groupspecificparticipantdata'].highest_standard_role_binding.role.priority_level
+
+    if pr_m:
+        pr_m += ' '
+
     name = source['participant'].name
     data = (
-        (source['raw_text'] or '') +
-        ('' if not source['entities'] else
-         '\nFound entities: ' + ', '.join(entity['type']
-                                          for entity in source['entities']))
-    ) or ', '.join(
+                   (source['raw_text'] or '') +
+                   ('' if not source['entities'] else
+                    '\nFound entities: ' + ', '.join(entity['type']
+                                                     for entity in source['entities']))
+           ) or ', '.join(
         message_binding for message_binding in AVAILABLE_MESSAGE_BINDINGS
         if message_binding in source['message']
     ) or (("New chat member" if len(source['message']['new_chat_members']) == 1
-           and source['message']['new_chat_members'][0]['id'] ==
-           source['message']['from']['id'] else 'Invited {}'.format(', '.join(
-               user['first_name'] or user['last_name'] or user['username']
-               for user in source['message'].get('new_chat_members'))))
+                                and source['message']['new_chat_members'][0]['id'] ==
+                                source['message']['from']['id'] else 'Invited {}'.format(', '.join(
+        user['first_name'] or user['last_name'] or user['username']
+        for user in source['message'].get('new_chat_members'))))
           if 'new_chat_members' in source['message'] else '')
-    result = f"{name} -> {data}"
+    result = f"{pr_m}{name} -> {data}"
     return result
 
 
@@ -305,7 +310,7 @@ def handle_entities(source) -> bool:
             source['bot'].send_message(
                 source['participant_group'],
                 "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                \nFor more information contact with @KoStard"                                                                                                                          .format(
+                \nFor more information contact with @KoStard".format(
                     source['participant'].name,
                     entities_check_response["cause"],
                     ", ".join("{} - {}".format(
@@ -342,7 +347,7 @@ def handle_message_bindings(source) -> bool:
             source['bot'].send_message(
                 source['participant_group'],
                 "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                \nFor more information contact with @KoStard"                                                                                                                          .format(
+                \nFor more information contact with @KoStard".format(
                     source['participant'].name,
                     ', '.join(message_bindings_check_response["cause"]),
                     ", ".join("{} - {}".format(
@@ -488,7 +493,7 @@ def reject_command_in_pg(source):
     source['bot'].send_message(
         source['participant_group'],
         'Sorry dear {}, you don\'t have permission to use \
-                command {} - your highest role is "{}".'                                                                                                                .format(
+                command {} - your highest role is "{}".'.format(
             source['participant'], source['command'],
             source['groupspecificparticipantdata'].highest_role.name),
         reply_to_message_id=source['message']["message_id"],
@@ -710,9 +715,6 @@ def send_problem(bot: Bot, participant_group: ParticipantGroup, text, message):
                 reply_to_message_id=message["message_id"],
             )
             return
-    # if any(variant == '[[EMPTY]]' for variant in (problem.variant_a, problem.variant_b, problem.variant_c, problem.variant_d, problem.variant_e)):
-    #     unilog(f"The problem {problem.index} is empty, the logic is not created yet")
-    #     return
     form_resp = bot.send_message(participant_group, str(problem))
     logging.debug("Sending problem {}".format(problem.index))
     logging.debug(form_resp)

@@ -497,6 +497,21 @@ class Role(models.Model):
     priority_level = models.IntegerField(default=1)
     from_stardard_kit = models.BooleanField(default=False)
 
+    def __lt__(self, other: 'Role'):
+        return self.priority_level < other.priority_level
+
+    def __gt__(self, other: 'Role'):
+        return self.priority_level > other.priority_level
+
+    def __le__(self, other: 'Role'):
+        return self.priority_level <= other.priority_level
+
+    def __ge__(self, other: 'Role'):
+        return self.priority_level >= other.priority_level
+
+    def __eq__(self, other: 'Role'):
+        return self.priority_level == other.priority_level
+
     def __str__(self):
         return '[{}] {}'.format(self.priority_level, self.name)
 
@@ -617,7 +632,7 @@ class GroupSpecificParticipantData(models.Model):
         return res
 
     @property
-    def highest_non_standard_role_binding(self) -> ParticipantGroupBinding:
+    def highest_non_standard_role_binding(self) -> 'ParticipantGroupBinding':
         """ Will return user's highest non-standard role binding in the group """
         res = None
         for binding in self.participantgroupbinding_set.filter(
@@ -631,7 +646,7 @@ class GroupSpecificParticipantData(models.Model):
         """
         Will return True if the participant is admin in current group
         """
-        return self.highest_non_standard_role_binding.role.priority_level >= Role.objects.get(
+        return self.highest_non_standard_role_binding.role >= Role.objects.get(
             value='admin')  # Will raise error if the database is not filled
 
 
