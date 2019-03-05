@@ -14,6 +14,7 @@ import time
 from datetime import datetime
 from threading import Thread
 import django
+import platform
 
 from os.path import getmtime
 
