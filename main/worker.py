@@ -6,33 +6,13 @@ from time import sleep
 from datetime import datetime
 import logging
 from .source_manager import SourceManager
+from .commands_mapping import COMMANDS_MAPPING
 
 """
 Will contain some function relations and arguments to run them after a command is processed
 {bot_object_id: [{func: f, args: [], kwargs: {}}]}
 """
 POST_PROCESSING_STACK = {}
-
-
-def add_to_post_processing_stack(bot: Bot, func, *args, **kwargs):
-    """
-    :param bot: current bot object
-    :param func: has to be either function or dict with func key that relates to a function
-    :param args: has to be used when the func is function
-    :param kwargs: has to be used when the func is function
-    :return:
-    """
-    if bot.id not in POST_PROCESSING_STACK:
-        POST_PROCESSING_STACK[bot.id] = []
-    if isinstance(func, dict):
-        POST_PROCESSING_STACK[bot.id].append(func)
-    else:
-        POST_PROCESSING_STACK[bot.id].append({
-            'func': func,
-            'args': args,
-            'kwargs': kwargs
-        })
-
 
 # configure_logging()
 
@@ -41,7 +21,7 @@ AVAILABLE_ENTITIES = {
     "mention": -1,
     "hashtag": 1,
     "cashtag": 0,
-    "bot_command": 0,
+    "bot_command": -1,
     "url": 2,
     "email": 1,
     "phone_number": 0,
@@ -118,27 +98,27 @@ class Worker:
         self.bot = bot
 
         # - (function, min_priority_level, needs_binding)
-        self.available_commands = {
-            "send": (self.send_problem, 6, True),
-            "answer": (self.answer_problem, 6, True),
-            "cancel_problem": (self.cancel_problem, 6, True),
-            "start_participant": (self.start_in_participant_group, 8, False),
-            "stop_participant": (self.remove_from_participant_group, 8, True),
-            "add_subject": (self.add_subject, 9, True),
-            "select_subject": (self.select_subject, 9, True),
-            "active_subject": (self.active_subject, 8, True),
-            "finish_subject": (self.finish_subject, 9, True),
-            "subjects_list": (self.get_subjects_list, 9, True),
-            # "score": (self.get_score, 0, True), # Stopping this, because participants can see their scores in the leaderboard
-            "report": (self.report, 2, True),
-            "add_special_problem": (self.add_user_defined_problem, 4, True),
-            "start_admin": (self.start_in_administrator_page, 'superadmin', False),
-            "stop_admin": (self.stop_in_administrator_page, 'superadmin', True),
-            "status": (self.status_in_administrator_page, 8, True),
-            "root_test": (self.root_test, 'superadmin', True),
-            "register": (self.register_participant_group, 'superadmin', False),
-            "restart": (self.handle_restart_command, 'superadmin', True),
-        }
+        # self.available_commands = {
+        #     "send": ('send_problem', 6, True),
+        #     "answer": ('answer_problem', 6, True),
+        #     "cancel_problem": ('cancel_problem', 6, True),
+        #     "start_participant": ('start_in_participant_group', 8, False),
+        #     "stop_participant": ('remove_from_participant_group', 8, True),
+        #     "add_subject": ('add_subject', 9, True),
+        #     "select_subject": ('select_subject', 9, True),
+        #     "active_subject": ('get_active_subject', 8, True),
+        #     "finish_subject": ('finish_subject', 9, True),
+        #     "subjects_list": ('get_subjects_list', 9, True),
+        #     # "score": ('get_score', 0, True), # Stopping this, because participants can see their scores in the leaderboard
+        #     "report": ('report', 2, True),
+        #     "add_special_problem": ('add_user_defined_problem', 4, True),
+        #     "start_admin": ('start_in_administrator_page', 'superadmin', False),
+        #     "stop_admin": ('stop_in_administrator_page', 'superadmin', True),
+        #     "status": ('status_in_administrator_page', 8, True),
+        #     "root_test": ('root_test', 'superadmin', True),
+        #     "register": ('register_participant_group', 'superadmin', False),
+        #     "restart": ('restart', 'superadmin', True),
+        # }
 
     def __getitem__(self, item):
         return self.__getattr__(item)
@@ -176,8 +156,11 @@ class Worker:
         """ Will log to the administrator page if available """
         if not self.is_administrator_page:
             self.bot.send_message(self.participant_group.administratorpage, message)
-        elif isinstance(self.participant_group, AdministratorPage):
-            self.bot.send_message(self.participant_group, message)
+        elif isinstance(self.participant_group, AdministratorPage) or self.administrator_page:
+            self.bot.send_message(self.participant_group or self.administrator_page, message,
+                                  reply_to_message_id=self.message['message_id'])
+        else:
+            print("Unknown in adm_log!!!")
 
     def check_entities(self):
         """ Will check message for entities and check participant's permissions to use them """
@@ -224,6 +207,11 @@ class Worker:
         del POST_PROCESSING_STACK[self.bot.id]
         for func_data in funcs:
             func_data['func'](*(func_data.get('args') or []), **(func_data.get('kwargs') or {}))
+
+    def run_command(self, command: TelegramCommand = None):
+        if not command:
+            command = self.command_model
+        COMMANDS_MAPPING[command.command_handler](self)
 
     def handle_update(self, update, *, catch_exceptions=False) -> bool:
         """ Handling Update
@@ -282,7 +270,7 @@ class Worker:
         result = f"{pr_m}{name} -> {data}"
         return result
 
-    def unilog(self, log: str) -> None:
+    def unilog(self, log: str, *, to_participant_group=False) -> None:
         """ Will log to the:
         - stdout
         - logging
@@ -291,6 +279,8 @@ class Worker:
         print(log)  # Logging to stdout
         logging.info(f'{timezone.now()} | {log}')  # Logging to logs file
         self.adm_log(log)  # Logging to administrator page
+        if to_participant_group:
+            self.bot.send_message(self.participant_group, log, reply_to_message_id=self.message['message_id'])
 
     def get_or_register_message_sender_participant(self) -> Participant:
         """
@@ -302,9 +292,11 @@ class Worker:
             if not participant:
                 participant = register_participant(self['message']['from'])
             self.source.participant = participant
+            self.source.is_from_superadmin = not not safe_getter(self.participant, 'superadmin')
             return participant
         else:
             self.source.participant = None
+            self.source.is_from_superadmin = False
             raise ValueError("INVALID MESSAGE DATA")
 
     def get_or_register_groupspecificparticipantdata_of_active_participant(
@@ -516,11 +508,16 @@ class Worker:
             pass  # Just regular message in participant group
 
     def handle_superadmin_commands_in_pg(self):
-        self.available_commands[
-            self['command']][0]()
+        if self.is_from_superadmin:
+            if self.command_model.in_participant_groups:
+                self.run_command()
+            else:
+                self.reject_command_in_pg_because_of_source()
+        else:
+            self.reject_command_in_pg()
 
     def accept_command_in_pg(self):
-        self.available_commands[self['command']][0]()
+        self.run_command()
 
     def reject_command_in_pg(self):
         self['bot'].send_message(
@@ -534,25 +531,28 @@ class Worker:
         self['groupspecificparticipantdata'].create_violation(
             get_from_Model(ViolationType, value='command_low_permissions'))
 
+    def reject_command_in_pg_because_of_source(self):
+        self.unilog("The command '{}' is not supposed to be used in the Participant Groups.".format(self.command),
+                    to_participant_group=True)
+
     def handle_pgm_commands(self):
         """
         Will handle commands from participant_group message
         """
         if not self['command']:
             return
-        if self['command'] in self.available_commands:
-            priority_level = self[
-                'groupspecificparticipantdata'].highest_role.priority_level
-            if (self.available_commands[self['command']][1] == 'superadmin'
-                    and safe_getter(self['participant'], 'superadmin')
-            ):
-                self.handle_superadmin_commands_in_pg()
-            elif (safe_getter(self['participant'], 'superadmin')
-                  or priority_level >= self.available_commands[self['command']][1]
-            ) and self['command'] != 'status':
-                self.accept_command_in_pg()
-            else:
-                self.reject_command_in_pg()
+        if self.command_model:
+            priority_level = self.groupspecificparticipantdata.highest_role.priority_level
+            if self.command_model.needs_superadmin:  # Got superadmin commands in PG
+                self.handle_superadmin_commands_in_pg()  # Not checking permissions, just handling
+            else:  # Got regular commands in PG
+                if self.is_from_superadmin or priority_level >= self.command_model.minimal_priority_level:
+                    if self.command_model.in_participant_groups:
+                        self.accept_command_in_pg()
+                    else:
+                        self.reject_command_in_pg_because_of_source()
+                else:
+                    self.reject_command_in_pg()
         elif self['command']:
             self['bot'].send_message(
                 self['participant_group'],
@@ -574,34 +574,81 @@ class Worker:
         else:
             self.unilog(self.create_log_from_message())
 
+    def get_message_sender_participant_from_administrator_page(self):
+        """
+        Will get participant from administrator page message
+        """
+        if self.source.get('message'):
+            participant = get_from_Model(
+                Participant, id=self['message']['from']['id'])
+            if not participant:
+                self.source.participant = None
+                self.source.is_from_superadmin = False
+                print("Can't find participant {}".format(
+                    self.message['from']['first_name'] or self.message['from']['username'] or self.message['from'][
+                        'last_name']))
+                return
+            self.source.participant = participant
+            self.source.is_from_superadmin = not not safe_getter(self.participant, 'superadmin')
+            return participant
+        else:
+            self.source.participant = None
+            self.source.is_from_superadmin = False
+            raise ValueError("INVALID MESSAGE DATA")
+
+    def get_groupspecificparticipantdata_of_active_participant_from_administrator_page(self):
+        """
+        Will get groupspecificparticipantdata from administrator page and participant
+        """
+        self.groupspecificparticipantdata = get_from_Model(self.participant.groupspecificparticipantdata_set,
+                                                           _mode='direct',
+                                                           participant_group__administratorpage=self.administrator_page)
+
+    def reject_command_in_administrator_page(self):
+        self['bot'].send_message(
+            self.administrator_page,
+            ('Sorry dear {}, you don\'t have permission to use ' +
+             'command "{}" - your highest role is "{}".').format(
+                self['participant'], self['command'],
+                self['groupspecificparticipantdata'].highest_role.name),
+            reply_to_message_id=self['message']["message_id"],
+        )
+
+    def reject_command_in_administrator_pages_because_of_source(self):
+        self.unilog("The command '{}' is not supposed to be used in the Administrator Pages.".format(self.command))
+
     def handle_message_from_administrator_page(self):
         """ Will handle message from administrator page
         + superadmins """
         if not self['command']:
             return  # Just text
-        if self['command'] in self.available_commands:
-            if (
-                    self.available_commands[self['command']][1] == 'superadmin'
-                    or self['command'] == 'status'
-            ) and self.available_commands[self['command']][2]:
-                self.available_commands[self['command']][0]()
+        if self.command_model:
+            self.get_message_sender_participant_from_administrator_page()
+            if not self.participant:
+                self.unilog("Unknown user in the administrator page.")
+                return
+            if not self.is_from_superadmin and not self.command_model.needs_superadmin:
+                self.get_groupspecificparticipantdata_of_active_participant_from_administrator_page()
+                priority_level = self.groupspecificparticipantdata.highest_role.priority_level
+            if self.is_from_superadmin or (
+                    not self.command_model.needs_superadmin and priority_level >= self.command_model.minimal_priority_level):
+                if not self.command_model.in_administrator_pages:
+                    self.reject_command_in_administrator_pages_because_of_source()
+                    return
+                self.run_command()
             else:
-                self['bot'].send_message(
-                    self['administrator_page'],
-                    "You can't use that command in administrator pages.",
-                    reply_to_message_id=self['message']['message_id'])
+                self.reject_command_in_administrator_page()
         else:
             self['bot'].send_message(
                 self['administrator_page'],
                 "Invalid command.",
                 reply_to_message_id=self['message']['message_id'])
 
-    def handle_message_from_superadmin(self):
+    def handle_message_from_superadmin_in_unregistered_group(self):
         """ Will handle message from superadmin
         that are not in the administrator page """
-        if self['command'] in self.available_commands and not self.available_commands[
-            self['command']][2]:
-            self.available_commands[self['command']][0]()
+        if self.command_model.in_unregistered:
+            self.run_command()
 
     def handle_message_from_private_chat(self):
         """ Will handle message from private chat """
@@ -637,6 +684,9 @@ class Worker:
         self.source.raw_text = self['message'].get("text")
         self.source.command = self['raw_text'][1:].split(" ")[0].split('@')[0] if self['raw_text'] and self['raw_text'][
             0] == '/' else ''  # This won't work with multiargumental commands
+        if self.source.command:
+            self.source.command_model = get_from_Model(TelegramCommand, command=self.command)
+
         self.source.text = self['raw_text'] if not self['command'] else None
 
         # Checking if the group is registered
@@ -659,7 +709,7 @@ class Worker:
             self.handle_message_from_administrator_page()
         elif is_superadmin:
             # If the user if superadmin but is sending a message not in a registered group
-            self.handle_message_from_superadmin()
+            self.handle_message_from_superadmin_in_unregistered_group()
         elif self['message']['chat']['type'] == 'private':
             # Will handle message from private chats
             self.handle_message_from_private_chat()
@@ -686,380 +736,24 @@ class Worker:
             self.bot.save()
             self.run_post_processing_functions()
 
-    def send_problem(self):
-        """ Will send problem -> default will be the next problem if available"""
-        if self.source.participant_group.activeProblem:
-            self.source.bot.send_message(
-                self.source.participant_group,
-                "You have to close active problem before sending another one.",
-                reply_to_message_id=self.source.message['message_id'])
-            return
-        if len(self.source.raw_text.split()) > 1:
-            index = int(self.source.raw_text.split()[1])
-            try:
-                problem: Problem = self.source.participant_group.activeSubjectGroupBinding.subject.problem_set.get(
-                    index=index)
-            except Problem.DoesNotExist:
-                self.source.bot.send_message(
-                    self.source.participant_group,
-                    'Invalid problem number "{}".'.format(index),
-                    reply_to_message_id=self.source.message["message_id"],
-                )
-                return
-            except AttributeError:  # If there is no activeSubjectGroupBinding
-                self.source.bot.send_message(
-                    self.source.participant_group,
-                    'There is no active subject for this group.',
-                    reply_to_message_id=self.source.message["message_id"],
-                )
-                return
-        else:
-            problem: Problem = self.source.participant_group.activeSubjectGroupBinding.last_problem.next
-            if not problem:
-                self.source.bot.send_message(
-                    self.source.participant_group,
-                    'The subject is finished, no problem to send.',
-                    reply_to_message_id=self.source.message["message_id"],
-                )
-                return
-        form_resp = self.source.bot.send_message(self.source.participant_group, str(problem))
-        logging.debug("Sending problem {}".format(problem.index))
-        logging.debug(form_resp)
-        for problemimage in problem.problemimage_set.filter(for_answer=False):
-            image = problemimage.image
-            try:
-                self.source.bot.send_image(
-                    self.source.participant_group,
-                    open(image.path, "rb"),
-                    reply_to_message_id=form_resp[0].get(
-                        "message_id"),  # Temporarily disabling
-                    caption="Image of problem N{}.".format(problem.index),
-                )
-                logging.debug("Sending image for problem {}".format(problem.index))
-                self.adm_log("Sent image {} for problem N{}".format(
-                    image, problem.index))
-            except Exception as e:
-                print("Can't send image {}".format(image))
-                print(e)
-                logging.info(e)
-                self.adm_log(
-                    "Can't send image {} for problem N{}".format(
-                        image, problem.index))
-        self.source.participant_group.activeProblem = problem
-        self.source.participant_group.save()
-        self.source.participant_group.activeSubjectGroupBinding.last_problem = problem
-        self.source.participant_group.activeSubjectGroupBinding.save()
-
-    def answer_problem(self):
-        """ Will send the answer of the problem -> automatically is answering to the active problem """
-        if not self.source.participant_group.activeProblem and len(self.source.raw_text.split()) <= 1:
-            self.source.bot.send_message(
-                self.source.participant_group,
-                "There is no active problem for this participant_group.",
-                reply_to_message_id=self.source.message["message_id"],
-            )
-            return
-        problem = self.source.participant_group.activeProblem
-        if len(self.source.raw_text.split()) > 1:
-            index = int(self.source.raw_text.split()[1])
-            if problem and index > problem.index:
-                self.source.bot.send_message(
-                    self.source.participant_group,
-                    "You can't send new problem's answer without opening it.",
-                    reply_to_message_id=self.source.message["message_id"],
-                )
-                return
-            elif not problem or index < problem.index:
-                try:
-                    problem = self.source.participant_group.activeSubjectGroupBinding.subject.problem_set.get(
-                        index=index)
-                except Problem.DoesNotExist:
-                    self.source.bot.send_message(self.source.participant_group,
-                                                 "Invalid problem number {}.")
-                else:
-                    self.source.bot.send_message(self.source.participant_group, problem.get_answer())
-                    for problemimage in problem.problemimage_set.filter(for_answer=True):
-                        image = problemimage.image
-                        try:
-                            self.source.bot.send_image(
-                                self.source.participant_group,
-                                open(image.path, "rb"),
-                                caption="Image of problem N{}'s answer.".format(problem.index),
-                            )
-                            self.unilog("Sending image for problem {}'s answer".format(problem.index))
-                        except Exception as e:
-                            self.unilog("Can't send image {} for problem N{}'s answer.".format(
-                                image, problem.index))
-                            print(e)
-                            logging.info(e)
-                return
-        self.source.bot.send_message(self.source.participant_group, problem.get_answer())
-        for problemimage in problem.problemimage_set.filter(for_answer=True):
-            image = problemimage.image
-            try:
-                self.source.bot.send_image(
-                    self.source.participant_group,
-                    open(image.path, "rb"),
-                    caption="Image of problem N{}'s answer.".format(problem.index),
-                )
-                self.unilog("Sending image for problem {}'s answer".format(problem.index))
-            except Exception as e:
-                self.unilog("Can't send image {} for problem N{}'s answer.".format(
-                    image, problem.index))
-                print(e)
-                logging.info(e)
-        self.source.bot.send_message(self.source.participant_group, problem.close(self.source.participant_group))
-        t_pages = self.source.participant_group.telegraphpage_set.all()
-        if t_pages:  # Create the page manually with DynamicTelegraphPageCreator
-            t_page = t_pages[
-                len(t_pages) -
-                1]  # Using last added page -> negative indexing is not supported
-            t_account = t_page.account
-            page_controller = DynamicTelegraphPageCreator(t_account.access_token)
-            page_controller.load_and_set_page(t_page.path, return_content=False)
-            page_controller.update_page(
-                content=self.createGroupLeaderBoardForTelegraph(self.source.participant_group))
-        self.source.participant_group.activeProblem = None
-        self.source.participant_group.save()
-
-    def cancel_problem(self):
-        """ Will cancel the problem and remove all answers from the DB.  """
-        if self.source.participant_group.activeProblem:
-            answers = [answer for answer in Answer.objects.filter(
-                group_specific_participant_data__participant_group=self.source.participant_group,
-                problem=self.source.participant_group.activeProblem)]
-            for answer in answers:
-                answer.delete()
-            self.source.participant_group.activeSubjectGroupBinding.last_problem = self.source.participant_group.activeProblem.previous
-            self.source.participant_group.activeSubjectGroupBinding.save()
-            temp_problem = self.source.participant_group.activeProblem
-            self.source.participant_group.activeProblem = None
-            self.source.participant_group.save()
-            self.source.bot.send_message(
-                self.source.participant_group,
-                "The problem {} is cancelled.".format(temp_problem.index),
-                reply_to_message_id=self.source.message['message_id'])
-        else:
-            self.source.bot.send_message(
-                self.source.participant_group,
-                "There is not active problem to cancel.",
-                reply_to_message_id=self.source.message['message_id'])
-
-    def start_in_participant_group(self):  # Won't work in new groups
-        """ Will create bot bindings with a given group """
-        binding = BotBinding(bot=self.source.bot, participant_group=self.source.participant_group)
-        binding.save()
-        self.source.bot.send_message(
-            self.source.participant_group,
-            "This participant_group is now bound with me, to break the connection, use /stop command.",
-            reply_to_message_id=self.source.message["message_id"],
-        )
-
-    def remove_from_participant_group(self):
-        """ Will remove bot binding with a given group """
-        self.source.bot.botbinding_set.objects.get(bot=self.source.bot).delete()
-        self.source.bot.send_message(
-            self.source.participant_group,
-            "The connection was successfully stopped.",
-            reply_to_message_id=self.source.message["message_id"],
-        )
-
-    def add_subject(self):
-        """ Will add subject to the group and select it if the group doesn't have active subject """
-        pass
-
-    def select_subject(self):
-        """ Will select subject in the group
-        Give with message
-         - index
+    def add_to_post_processing_stack(self, func, *args, **kwargs):
         """
-        if not ' ' in self.source.raw_text or not self.source.raw_text.split(' ')[1].isnumeric():
-            self.source.bot.send_message(
-                self.source.participant_group,
-                """You have to give the index of subject to select.\nYou can get indexes with /subjects_list command.""",
-                reply_to_message_id=self.source.message['message_id'])
-            return
-        index = int(self.source.raw_text.split(' ')[1])
-        subject_group_bindings = self.source.participant_group.subjectgroupbinding_set.all()
-        if index not in range(1, len(subject_group_bindings) + 1):
-            self.source.bot.send_message(
-                self.source.participant_group,
-                """You have to give valid subject index.\nYou can get indexes with /subjects_list command.""",
-                reply_to_message_id=self.source.message['message_id'])
-            return
-        self.source.participant_group.activeSubjectGroupBinding = subject_group_bindings[index
-                                                                                         - 1]
-        self.source.participant_group.activeProblem = None
-        self.source.participant_group.save()
-        self.source.bot.send_message(
-            self.source.participant_group,
-            """Subject "{}" is now selected.""".format(
-                subject_group_bindings[index - 1].subject.name),
-            reply_to_message_id=self.source.message['message_id'])
-
-    def active_subject(self):
-        """ Will send active subject to the group if available """
-        if self.source.participant_group.activeSubjectGroupBinding:
-            self.source.bot.send_message(
-                self.source.participant_group,
-                """Subject "{}" is active.""".format(
-                    self.source.participant_group.activeSubjectGroupBinding.subject.name),
-                reply_to_message_id=self.source.message['message_id'])
-        else:
-            self.source.bot.send_message(
-                self.source.participant_group,
-                """There is no active subject in this group.""",
-                reply_to_message_id=self.source.message['message_id'])
-
-    def finish_subject(self):
-        """ Will close subject in the group """
-        pass
-
-    def get_subjects_list(self):
-        """ Will send subjects list for current group """
-        self.source.bot.send_message(
-            self.source.participant_group,
-            """This is the subjects list for current group:\n{}""".format('\n'.join(
-                ' - '.join(str(e) for e in el)
-                for el in enumerate((binding.subject.name
-                                     for binding in self.source.participant_group.
-                                    subjectgroupbinding_set.all()), 1))),
-            reply_to_message_id=self.source.message['message_id'])
-
-    def get_score(self):
-        """ Will send the score of the participant to the group """
-        participant = Participant.objects.filter(pk=self.source.message["from"]["id"])
-        if participant:
-            participant = participant[0]
-            specific = GroupSpecificParticipantData.objects.filter(
-                participant=participant, participant_group=self.source.participant_group)
-            if specific:
-                specific = specific[0]
-                self.source.bot.send_message(
-                    self.source.participant_group,
-                    "{}'s score is {}".format(str(participant), specific.score),
-                    reply_to_message_id=self.source.message["message_id"],
-                )
-
-    def report(self):
-        """ Temp -> Will be created """
-        pass
-
-    def add_user_defined_problem(self):
-        """ Add User-defined Problem """
-        pass
-
-    def start_in_administrator_page(self):
-        """ Will save administrator page """
-        administrator_page = AdministratorPage(
-            telegram_id=self.source.message["chat"]["id"],
-            username=self.source.message["chat"].get("username"),
-            title=self.source.message["chat"].get("title"),
-            type=(GroupType.objects.filter(name=self.source.message["chat"].get("type"))
-                  or [None])[0],
-        )
-        administrator_page.save()
-        self.source.bot.send_message(
-            administrator_page,
-            "Congratulations, this group is now registered as an administrator page.",
-            reply_to_message_id=self.source.message['message_id'])
-
-    def stop_in_administrator_page(self):
-        """ Will remove administrator page """
-        chat_id = self.source.administrator_page.telegram_id
-        self.source.administrator_page.delete()
-        self.source.bot.send_message(
-            chat_id,
-            'This target is no longer an administrator page, so you won\'t get any log here anymore.',
-            reply_to_message_id=self.source.message['message_id'])
-
-
-    def status_in_administrator_page(self) -> None:
-        """ Will log the status to the administrator page """
-        try:
-            answers = self.source.administrator_page.participant_group.activeProblem.answer_set.filter(
-                processed=False,
-                group_specific_participant_data__participant_group=
-                self.source.administrator_page.participant_group)
-        except AttributeError:  # If there is no active problem
-            self.source.bot.send_message(
-                self.source.administrator_page,
-                """There is no active problem.""",
-                reply_to_message_id=self.source.message['message_id'])
-            return
-        answers_count = [el for el in ((
-            variant,
-            len([answer for answer in answers
-                 if answer.answer.upper() == variant]))
-            for variant in 'ABCDE') if el[1]]
-        self.source.bot.send_message(
-            self.source.administrator_page,
-            """Current status for problem {} is{}\nFor more contact with @KoStard""".format(
-                self.source.administrator_page.participant_group.activeProblem.index,
-                ''.join('\n{} - {}'.format(*el) for el in answers_count)
-                if answers_count else ' - No one answered.'),
-            reply_to_message_id=self.source.message['message_id'])
-
-
-    def root_test(self) -> None:
-        """ This is used for some root testings of the bot """
-        ### Now will be used for image sending test
-        try:
-            self.source.bot.send_image(
-                self.source.administrator_page,
-                open('../media/images/Photos/image005.png', 'rb'),
-                reply_to_message_id=self.source.message['message_id']
-            )  # Is working, so the bug with image sending is solved.
-        except Exception as e:
-            print(e)
-            self.unilog("Can't send image in root_test")
-
-
-    def register_participant_group(self):
-        """ Will register chat as a participant group """
-        chat = self.source.message.get("chat")
-        tp = get_from_Model(GroupType, name=chat['type'])
-        if not chat:
-            logging.info("Can't get chat to register.")
-            pass
-        participant_group = get_from_Model(
-            ParticipantGroup, telegram_id=chat['id'])
-        if participant_group:
-            self.source.bot.send_message(
-                participant_group,
-                "This group is already registered.",
-                reply_to_message_id=self.source.message['message_id']
-            )  # Maybe add reference to the documentation with this message
-        elif not tp:
-            self.source.bot.send_message(
-                chat['id'],
-                "Unknown type of group, to improve this connect with @KoStard.",
-                reply_to_message_id=self.source.message['message_id'])
-        else:
-            participant_group = ParticipantGroup(
-                telegram_id=chat['id'],
-                username=chat.get('username'),
-                title=chat.get('title'),
-                type=tp)
-            participant_group.save()
-            binding = BotBinding(bot=self.source.bot, participant_group=participant_group)
-            binding.save()
-            self.source.bot.send_message(
-                participant_group,
-                """This group is now registered and a binding is created,\
-so now the bot will listen to your commands.""",
-                reply_to_message_id=self.source.message['message_id'])
-
-
-    def handle_restart_command(self):
+        :param bot: current bot object
+        :param func: has to be either function or dict with func key that relates to a function
+        :param args: has to be used when the func is function
+        :param kwargs: has to be used when the func is function
+        :return:
         """
-        Will restart the script
-        - Maybe will result to problems when in multi-bot mode, because will restart the program, while other
-            bot's commands are being processed
-        """
-        self.unilog("Has to restart")
-        add_to_post_processing_stack(self.bot, update_and_restart)
-
+        if self.source.bot.id not in POST_PROCESSING_STACK:
+            POST_PROCESSING_STACK[self.source.bot.id] = []
+        if isinstance(func, dict):
+            POST_PROCESSING_STACK[self.source.bot.id].append(func)
+        else:
+            POST_PROCESSING_STACK[self.source.bot.id].append({
+                'func': func,
+                'args': args,
+                'kwargs': kwargs
+            })
 
     def createGroupLeaderBoard(self):
         """ Will process and present the data for group leaderboards """
@@ -1081,7 +775,6 @@ so now the bot will listen to your commands.""",
         )[::-1]]
         return gss
 
-
     def get_promoted_participants_list_for_leaderboard(self):
         """ Will process data of promoted participants for group leaderboards """
         admin_gss = [{
@@ -1096,7 +789,6 @@ so now the bot will listen to your commands.""",
             lambda gs: [gs.highest_non_standard_role_binding.role.priority_level],
         )[::-1]]
         return admin_gss
-
 
     def createGroupLeaderBoardForTelegraph(self,
                                            *,
@@ -1174,7 +866,6 @@ so now the bot will listen to your commands.""",
                         gs['participant'].username else gs['participant'].full_name
                     ])))
         return res
-
 
     def create_and_save_telegraph_page(t_account: TelegraphAccount,
                                        title: str,

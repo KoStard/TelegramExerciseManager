@@ -285,6 +285,20 @@ class SubjectGroupBindingAdmin(admin.ModelAdmin):
     Last_problem.admin_order_field = "last_problem__index"
 
 
+@admin.register(TelegramCommand)
+class TelegramCommandAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "command",
+        "command_handler",
+        "minimal_priority_level",
+        "in_unregistered",
+        "in_participant_groups",
+        "in_administrator_pages",
+        "needs_superadmin",
+    )
+
+
 @admin.register(TelegraphAccount)
 class TelegraphAccountAdmin(admin.ModelAdmin):
     list_display = (

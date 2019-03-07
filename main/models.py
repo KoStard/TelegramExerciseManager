@@ -803,6 +803,29 @@ class SubjectGroupBinding(models.Model):
         db_table = 'db_subject_group_binding'
 
 
+class TelegramCommand(models.Model):
+    """
+    Telegram Command Model
+    """
+
+    command = models.CharField(max_length=200)
+    command_handler = models.CharField(max_length=200)
+    minimal_priority_level = models.IntegerField(default=9)
+    in_unregistered = models.BooleanField(default=False)
+    in_participant_groups = models.BooleanField(default=False)
+    in_administrator_pages = models.BooleanField(default=False)
+    needs_superadmin = models.BooleanField(default=False)
+
+    def __str__(self):
+        return '{} {}_{}{}'.format(self.command, self.minimal_priority_level, ''.join('*' if el else '-' for el in (
+            self.in_unregistered, self.in_participant_groups, self.in_administrator_pages)),
+                                   'A' if self.needs_superadmin else '-')
+
+    class Meta:
+        verbose_name = 'Telegram Command'
+        db_table = 'db_telegram_command'
+
+
 class TelegraphAccount(models.Model):
     """ Telegraph Account model """
     access_token = models.CharField(max_length=70)
