@@ -43,8 +43,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE',
 
 django.setup()
 from django.utils import timezone
-from main.worker import *
 from main.universals import (update_and_restart)
+from main.worker import Worker
+from main.models import *
 running = True
 file_checks = 0
 
@@ -85,6 +86,7 @@ def run(bots, *, testing=False):
 
     def update(bot):
         global running, file_checks, autorestart
+        worker = Worker(bot)
         while running:
             if file_checks % 20 < 2:
                 if get_listening_files() != WATCHED_FILES and autorestart and platform.system() != 'Windows':
@@ -99,7 +101,7 @@ def run(bots, *, testing=False):
                     return
             # try:
             if running:
-                update_bot(bot)
+                worker.update_bot()
             # except Exception as e:
             #     logging.warning("ERROR: {}".format(e))
             #     time.sleep(1)
