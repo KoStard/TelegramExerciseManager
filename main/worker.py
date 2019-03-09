@@ -97,29 +97,6 @@ class Worker:
         self.source = SourceManager(bot.id)  # Don't adding layer yet
         self.bot = bot
 
-        # - (function, min_priority_level, needs_binding)
-        # self.available_commands = {
-        #     "send": ('send_problem', 6, True),
-        #     "answer": ('answer_problem', 6, True),
-        #     "cancel_problem": ('cancel_problem', 6, True),
-        #     "start_participant": ('start_in_participant_group', 8, False),
-        #     "stop_participant": ('remove_from_participant_group', 8, True),
-        #     "add_subject": ('add_subject', 9, True),
-        #     "select_subject": ('select_subject', 9, True),
-        #     "active_subject": ('get_active_subject', 8, True),
-        #     "finish_subject": ('finish_subject', 9, True),
-        #     "subjects_list": ('get_subjects_list', 9, True),
-        #     # "score": ('get_score', 0, True), # Stopping this, because participants can see their scores in the leaderboard
-        #     "report": ('report', 2, True),
-        #     "add_special_problem": ('add_user_defined_problem', 4, True),
-        #     "start_admin": ('start_in_administrator_page', 'superadmin', False),
-        #     "stop_admin": ('stop_in_administrator_page', 'superadmin', True),
-        #     "status": ('status_in_administrator_page', 8, True),
-        #     "root_test": ('root_test', 'superadmin', True),
-        #     "register": ('register_participant_group', 'superadmin', False),
-        #     "restart": ('restart', 'superadmin', True),
-        # }
-
     def __getitem__(self, item):
         return self.__getattr__(item)
 
