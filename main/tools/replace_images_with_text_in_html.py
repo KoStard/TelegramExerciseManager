@@ -34,6 +34,10 @@ def replace_images_with_text(HTML_path, text, images):
 
 
 if __name__ == '__main__':
-    replace_images_with_text(
-        sys.argv[1] if sys.argv[1][0] in '~/' else
-        os.getcwd() + '/' + sys.argv[1], sys.argv[2], sys.argv[3:])
+    if len(sys.argv) > 1:
+        replace_images_with_text(
+            sys.argv[1] if sys.argv[1][0] in '~/' else
+            os.getcwd() + '/' + sys.argv[1], sys.argv[2], sys.argv[3:])
+    else:
+        replace_images_with_text(
+            '../local/PreTest-InternalMedicine/Medicine PreTest Self-Assessment and Review - 2015.html', '', ['Image_011.jpg, '])

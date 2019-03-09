@@ -12,10 +12,10 @@ def status_in_administrator_page(worker):
             reply_to_message_id=worker.source.message['message_id'])
         return
     answers_count = [el for el in ((
-        variant,
+        variant.upper(),
         len([answer for answer in answers
-             if answer.answer.upper() == variant]))
-        for variant in 'ABCDE') if el[1]]
+             if answer.answer.upper() == variant.upper()]))
+        for variant in worker.source.administrator_page.participant_group.activeProblem.variants_dict.keys()) if el[1]]
     worker.source.bot.send_message(
         worker.source.administrator_page,
         """Current status for problem {} is{}\nFor more contact with @KoStard""".format(

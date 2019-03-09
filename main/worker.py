@@ -478,7 +478,9 @@ class Worker:
         """
         if not self['text']:
             return  # There is no text in the message
-        if len(self['text']) == 1 and self['text'].upper() in ('A', 'B', 'C', 'D', 'E'):
+        if len(self['text']) == 1 and ((not self.participant_group.activeProblem.variants and self['text'].upper() in (
+        'A', 'B', 'C', 'D', 'E')) or (
+                                               self.participant_group.activeProblem.variants and self.text.lower() in self.participant_group.activeProblem.variants_dict.keys())):
             self.source.variant = self['text'].upper()
             self.handle_answer()
         else:

@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.postgres.fields import ArrayField
 from main.universals import (get_response, configure_logging, safe_getter)
 import io
 import re
@@ -46,26 +47,20 @@ class Problem(models.Model):
 
     index = models.IntegerField(null=True, blank=True)
     formulation = models.CharField(max_length=1500)
-    variant_a = models.CharField(max_length=300)
-    variant_b = models.CharField(max_length=300)
-    variant_c = models.CharField(max_length=300)
-    variant_d = models.CharField(max_length=300)
-    variant_e = models.CharField(max_length=300)
+    variants = ArrayField(models.CharField(max_length=500), blank=True, null=True)
     answer_formulation = models.CharField(max_length=6000)
     right_variant = models.CharField(max_length=1)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     is_special = models.BooleanField(default=False)
     value = models.IntegerField(default=50)
-    chapter = models.CharField(max_length=300, null=True, blank=True)
+    chapter = models.CharField(max_length=400, null=True, blank=True)
 
     def __str__(self):
         return """\\<b>#Problem N{}\\</b>{}\n{}{}{}""".format(
             self.index, ("\nFrom chapter: #{}".format(
                 self.chapter.replace(' ', '_').replace(':', '')) if self.chapter else ''),
             self.formulation,
-            ''.join(f'\n{variant.upper()}. {getattr(self, f"variant_{variant.lower()}")}' if getattr(self,
-                                                                                                     f"variant_{variant.lower()}") != "[[EMPTY]]" else ""
-                    for variant in 'abcde'),
+            ''.join(f'\n{variant.upper()}. {text}' for variant, text in self.variants_dict.items()),
             ('' if self.has_next else '\n#last'))
 
     def get_answer(self):
@@ -141,6 +136,10 @@ class Problem(models.Model):
             if n:
                 return n[0]
 
+    @property
+    def variants_dict(self):
+        return {chr(ord('a') + index): self.variants[index] for index in range(len(self.variants))}
+
     @staticmethod
     def get_list_display():
         """ Used in the django_admin_creator """
@@ -165,10 +164,9 @@ class ParticipantDefinedProblem(Problem):
     problem_name = models.CharField(max_length=50)
 
     def __str__(self):
-        return """\\<b>#User_Defined_Problem {} - From #{}\\</b>\n{}\nA. {}\nB. {}\nC. {}\nD. {}\nE. {}""".format(
+        return """\\<b>#User_Defined_Problem {} - From #{}\\</b>\n{}{}""".format(
             self.problem_name, self.participant.name.replace(' ', '_'),
-            self.formulation, self.variant_a, self.variant_b, self.variant_c,
-            self.variant_d, self.variant_e)
+            self.formulation, ''.join(f'\n{variant.upper()}. {text}' for variant, text in self.variants_dict.items()))
 
     @staticmethod
     def get_list_display():
