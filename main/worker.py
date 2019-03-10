@@ -316,7 +316,7 @@ class Worker:
         roles_number = 0
         current_list = None
         for gs in (raw_leaderboard[:max_limit] if max_limit else raw_leaderboard):
-            if gs['standard_role'] != last_role:
+            if not last_role or gs['standard_role'].value != last_role.value:
                 if last_role:
                     res.append(DynamicTelegraphPageCreator.hr)
                 roles_number += 1
