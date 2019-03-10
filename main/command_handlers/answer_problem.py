@@ -71,6 +71,6 @@ def answer_problem(worker):
         page_controller = DynamicTelegraphPageCreator(t_account.access_token)
         page_controller.load_and_set_page(t_page.path, return_content=False)
         page_controller.update_page(
-            content=worker.createGroupLeaderBoardForTelegraph(worker.source.participant_group))
+            content=worker.createGroupLeaderBoardForTelegraph())
     worker.source.participant_group.activeProblem = None
     worker.source.participant_group.save()
