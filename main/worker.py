@@ -296,9 +296,8 @@ class Worker:
                                            *,
                                            max_limit=0):
         """ Will create content for leaderboard telegraph page """
-        raw_leaderboard = self.createGroupLeaderBoard(self.source.participant_group)
-        raw_promoted_list = self.get_promoted_participants_list_for_leaderboard(
-            self.source.participant_group)
+        raw_leaderboard = self.createGroupLeaderBoard()
+        raw_promoted_list = self.get_promoted_participants_list_for_leaderboard()
         res = []
 
         res.append(
