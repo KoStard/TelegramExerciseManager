@@ -369,7 +369,7 @@ class Worker:
                     ])))
         return res
 
-    def create_and_save_telegraph_page(t_account: TelegraphAccount,
+    def create_and_save_telegraph_page(self, t_account: TelegraphAccount,
                                        title: str,
                                        content: list,
                                        participant_group: ParticipantGroup = None):
