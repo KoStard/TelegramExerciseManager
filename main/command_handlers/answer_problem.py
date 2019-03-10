@@ -31,7 +31,7 @@ def answer_problem(worker):
                                                "Invalid problem number {}.")
             else:
                 worker.source.bot.send_message(worker.source.participant_group, problem.get_answer())
-                for problemimage in problem.problemimage_set.filter(for_answer=True):
+                for problemimage in sorted(problem.problemimage_set.filter(for_answer=True), key=lambda img: img.id):
                     image = problemimage.image
                     try:
                         worker.source.bot.send_image(
@@ -47,7 +47,7 @@ def answer_problem(worker):
                         logging.info(e)
             return
     worker.source.bot.send_message(worker.source.participant_group, problem.get_answer())
-    for problemimage in problem.problemimage_set.filter(for_answer=True):
+    for problemimage in sorted(problem.problemimage_set.filter(for_answer=True), key=lambda img: img.id):
         image = problemimage.image
         try:
             worker.source.bot.send_image(

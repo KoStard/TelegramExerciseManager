@@ -41,7 +41,7 @@ def send_problem(worker) -> None:
     form_resp = worker.source.bot.send_message(worker.source.participant_group, str(problem))
     logging.debug("Sending problem {}".format(problem.index))
     logging.debug(form_resp)
-    for problemimage in problem.problemimage_set.filter(for_answer=False):
+    for problemimage in sorted(problem.problemimage_set.filter(for_answer=False), key=lambda img: img.id):
         image = problemimage.image
         try:
             worker.source.bot.send_image(

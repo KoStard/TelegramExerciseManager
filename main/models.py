@@ -187,7 +187,7 @@ class ParticipantDefinedProblem(Problem):
 class ProblemImage(models.Model):
     """ Problem Image Model """
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
-    image = models.ImageField()
+    image = models.ImageField(max_length=250)
     for_answer = models.BooleanField(default=False)
 
     def __str__(self):
