@@ -35,7 +35,7 @@ class SourceManager:
 
     def __getattr__(self, item):
         if item == 'own_props' or item in self.own_prosp or item in self.__dict__:
-            return self.__dict__[item]
+            return self.__dict__[item] if item in self.__dict__ else getattr(self, item)
         return _DATA_STACK[self.bot_id][-1][item]
 
     def __setitem__(self, key, value):
