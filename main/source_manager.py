@@ -12,7 +12,7 @@ class SourceManager:
     """
     Will return the "sourced" decorator
     """
-    own_prosp = ('bot_id',)
+    own_prosp = ('bot_id', 'get')
 
     def __init__(self, bot_id: int):
         self.bot_id = bot_id
