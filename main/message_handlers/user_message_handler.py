@@ -25,7 +25,10 @@ def handle_message_from_user(worker):
                                                                                           0] == '/' else ''
 
     if worker.source.command:
-        worker.source.command_model = get_from_Model(TelegramCommand, command=worker.command)
+        worker.source.command_model = get_from_Model(
+            TelegramCommand, command=worker.command)
+    else:
+        worker.source.command_model = None
 
     worker.source.text = worker.source.raw_text if not worker.source.command else None
 
@@ -34,7 +37,8 @@ def handle_message_from_user(worker):
         ParticipantGroup, telegram_id=worker.source.message["chat"]["id"])
 
     # Checking if is a superadmin
-    worker.source.is_superadmin = not not SuperAdmin.objects.filter(user__id=worker.source.message['from']['id'])
+    worker.source.is_superadmin = not not SuperAdmin.objects.filter(
+        user__id=worker.source.message['from']['id'])
 
     # Checking if in an administrator page
     worker.source.administrator_page = get_from_Model(
@@ -46,9 +50,12 @@ def handle_message_from_user(worker):
         user_pg_message_handler.handle_message_from_participant_group(worker)
     elif worker.source.is_administrator_page:
         # If the message is in the administrator page
-        user_admp_message_handler.handle_message_from_administrator_page(worker)
-    elif worker.source.is_superadmin or worker.source.message['chat']['type'] in ('private', 'group', 'supergroup'):
+        user_admp_message_handler.handle_message_from_administrator_page(
+            worker)
+    elif worker.source.is_superadmin or worker.source.message['chat'][
+            'type'] in ('private', 'group', 'supergroup'):
         # If the user if superadmin but is sending a message not in a registered group
-        user_unrgp_message_handler.handle_message_from_unregistered_target(worker)
+        user_unrgp_message_handler.handle_message_from_unregistered_target(
+            worker)
     else:
         print("Don't know what to do... :/")
