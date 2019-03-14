@@ -20,7 +20,7 @@ def handle_message_from_unregistered_target(worker):
 def handle_message_from_superadmin_in_unregistered_group(worker):
     """ Will handle message from superadmin
     that are not in the administrator page """
-    if worker.command_model.in_unregistered:
+    if worker.command_model and worker.command_model.in_unregistered:
         worker.run_command()
 
 
