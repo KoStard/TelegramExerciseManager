@@ -4,6 +4,7 @@ Will handle messages from administrator pages
 
 from main.universals import get_from_Model, safe_getter
 from main.models import Participant
+from main.templates import command_rejection_message_template
 
 
 def handle_message_from_administrator_page(worker):
@@ -74,9 +75,10 @@ def reject_command_in_administrator_pages_because_of_source(worker):
 def reject_command_in_administrator_page(worker):
     worker['bot'].send_message(
         worker.administrator_page,
-        ('Sorry dear {}, you don\'t have permission to use ' +
-         'command "{}" - your highest role is "{}".').format(
-            worker['participant'], worker['command'],
-            worker['groupspecificparticipantdata'].highest_role.name),
+        command_rejection_message_template.format(
+            name=worker['participant'].name,
+            command=worker['command'],
+            highest_role=worker['groupspecificparticipantdata'].highest_role.name
+        ),
         reply_to_message_id=worker['message']["message_id"],
     )

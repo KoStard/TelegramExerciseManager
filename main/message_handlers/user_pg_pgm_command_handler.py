@@ -4,6 +4,7 @@ Will handle commands from participant group members in participant groups
 
 from main.universals import get_from_Model
 from main.models import ViolationType
+from main.templates import command_rejection_message_template
 
 
 def handle_pgm_commands(worker):
@@ -45,10 +46,11 @@ def handle_superadmin_commands_in_pg(worker):
 def reject_command_in_pg(worker):
     worker['bot'].send_message(
         worker['participant_group'],
-        ('Sorry dear {}, you don\'t have permission to use ' +
-         'command "{}" - your highest role is "{}".').format(
-            worker['participant'], worker['command'],
-            worker['groupspecificparticipantdata'].highest_role.name),
+        command_rejection_message_template.format(
+            name=worker['participant'].name,
+            command=worker['command'],
+            highest_role=worker['groupspecificparticipantdata'].highest_role.name
+        ),
         reply_to_message_id=worker['message']["message_id"],
     )
     worker['groupspecificparticipantdata'].create_violation(

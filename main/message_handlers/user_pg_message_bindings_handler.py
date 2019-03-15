@@ -5,6 +5,7 @@ Will handle message bindings from user in participant groups
 import logging
 from main.universals import get_from_Model
 from main.models import ViolationType
+from main.templates import message_removal_message_with_highest_role_template
 
 AVAILABLE_MESSAGE_BINDINGS = {
     "document": 0,
@@ -43,16 +44,10 @@ def handle_message_bindings(worker) -> bool:
         if not message_bindings_check_response["unknown"]:
             worker['bot'].send_message(
                 worker['participant_group'],
-                "Dear {}, your message will be removed, because {}.\nYou have [{}] roles.\
-                \nFor more information contact with @KoStard".format(
-                    worker['participant'].name,
-                    ', '.join(message_bindings_check_response["cause"]),
-                    ", ".join("{} - {}".format(
-                        participantgroupbinding.role.name,
-                        participantgroupbinding.role.priority_level,
-                    ) for participantgroupbinding in
-                              worker['groupspecificparticipantdata'].
-                              participantgroupbinding_set.all()),
+                message_removal_message_with_highest_role_template.format(
+                    name=worker['participant'].name,
+                    cause=', '.join(message_bindings_check_response["cause"]),
+                    highest_role=worker['groupspecificparticipantdata'].highest_role.name
                 ),
                 reply_to_message_id=worker['message']["message_id"],
             )
