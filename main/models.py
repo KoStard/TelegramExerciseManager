@@ -65,7 +65,7 @@ class Problem(models.Model):
 
     def get_answer(self):
         """ Is generating problem answer formulation to publish """
-        return """\\<b>The right choice is {}\\</b>\n{}\n#Answer to {}\n""".format(
+        return """\\<b>The right choice is {}\\</b>\n{}\n#Answer of the problem N{}.\n""".format(
             self.right_variant.upper(), self.answer_formulation, self.index)
 
     def close(self, participant_group):
