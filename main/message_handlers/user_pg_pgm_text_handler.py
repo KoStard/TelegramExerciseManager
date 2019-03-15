@@ -11,7 +11,7 @@ def handle_pgm_text(worker):
     """
     if not worker['text']:
         return  # There is no text in the message
-    if len(worker['text']) == 1 and (
+    if len(worker['text']) == 1 and worker.participant_group.activeProblem and (
             (not worker.participant_group.activeProblem.variants and worker['text'].upper() in (
                     'A', 'B', 'C', 'D', 'E')) or (
                     worker.participant_group.activeProblem.variants and worker.text.lower() in worker.participant_group.activeProblem.variants_dict.keys())):
