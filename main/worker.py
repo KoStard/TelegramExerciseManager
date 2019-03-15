@@ -217,14 +217,33 @@ class Worker:
         result = f"{pr_m}{name} -> {data}"
         return result
 
+    def _get_unilog_message_identifier(self) -> str:
+        """
+        Will return identifier for the unilogs.
+        - {group title} when in participant group
+        - UR {group title} when in unregistered group
+        - PRIVATE when in private mode
+        - '' else
+        """
+        if not self.source.get('message'):
+            return ''
+        if self.source.get('participant_group'):
+            return f'{self.source.participant_group.username or self.source.participant_group.title} '
+        elif self.source.message['chat']['type'] in ('group', 'supergroup'):
+            return f'UR {self.source.message["chat"].get("username") or self.source.message["chat"].get("title")} '
+        elif self.source.message['chat']['type'] in ('private',):
+            return f'PRIVATE '
+        return ''
+
     def unilog(self, log: str, *, to_participant_group=False) -> None:
         """ Will log to the:
         - stdout
         - logging
         - adm_page
         """
-        print(log)  # Logging to stdout
-        logging.info(f'{timezone.now()} | {log}')  # Logging to logs file
+        identifier = self._get_unilog_message_identifier()
+        print(f'{identifier}{log}')  # Logging to stdout
+        logging.info(f'{timezone.now()} | {identifier}{log}')  # Logging to logs file
         self.adm_log(log)  # Logging to administrator page
         if to_participant_group:
             self.bot.send_message(self.participant_group, log, reply_to_message_id=self.message['message_id'])
