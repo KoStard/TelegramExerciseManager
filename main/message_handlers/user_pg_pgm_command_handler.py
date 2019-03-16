@@ -20,10 +20,13 @@ def handle_pgm_commands(worker):
         else:  # Got regular commands in PG
             if worker.is_from_superadmin or priority_level >= worker.command_model.minimal_priority_level:
                 if worker.command_model.in_participant_groups:
+                    worker.unilog("Command accepted")
                     accept_command_in_pg(worker)
                 else:
+                    worker.unilog("Command rejected")
                     reject_command_in_pg_because_of_source(worker)
             else:
+                worker.unilog("Command rejected")
                 reject_command_in_pg(worker)
     elif worker['command']:
         worker['bot'].send_message(
@@ -36,10 +39,13 @@ def handle_pgm_commands(worker):
 def handle_superadmin_commands_in_pg(worker):
     if worker.is_from_superadmin:
         if worker.command_model.in_participant_groups:
+            worker.unilog("Command accepted")
             worker.run_command()
         else:
+            worker.unilog("Command rejected")
             reject_command_in_pg_because_of_source(worker)
     else:
+        worker.unilog("Command rejected")
         reject_command_in_pg(worker)
 
 

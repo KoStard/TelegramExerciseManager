@@ -24,10 +24,13 @@ def handle_message_from_administrator_page(worker):
         if worker.is_from_superadmin or (
                 not worker.command_model.needs_superadmin and priority_level >= worker.command_model.minimal_priority_level):
             if not worker.command_model.in_administrator_pages:
+                # worker.unilog("Command rejected")
                 reject_command_in_administrator_pages_because_of_source(worker)
                 return
+            # worker.unilog("Command accepted")
             worker.run_command()
         else:
+            # worker.unilog("Command rejected")
             reject_command_in_administrator_page(worker)
     else:
         worker['bot'].send_message(
