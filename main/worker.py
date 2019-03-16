@@ -192,7 +192,9 @@ class Worker:
     def create_log_from_message(self) -> str:
         """ Creating log from Telegram message """
         pr_m = ''  # Priority marker
-        if self['groupspecificparticipantdata'].is_admin:
+        if self.source.is_superadmin:
+            pr_m = '🌋'
+        elif self['groupspecificparticipantdata'].is_admin:
             pr_m = '🛡️'
         else:
             pr_m = '⭐' * max(self['groupspecificparticipantdata'].highest_standard_role_binding.role.priority_level, 0)

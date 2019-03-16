@@ -2,7 +2,7 @@
 Here will be collected methods of user registry
 """
 
-from main.models import Participant, GroupSpecificParticipantData
+from main.models import Participant, GroupSpecificParticipantData, Role, ParticipantGroup, ParticipantGroupBinding
 from main.universals import safe_getter
 
 
@@ -31,3 +31,8 @@ def register_groupspecificparticipantdata(
     gspd = GroupSpecificParticipantData(**kwargs)
     gspd.save()
     return gspd
+
+
+def create_participantgroupbinding(gspd: GroupSpecificParticipantData,
+                                   role: Role) -> ParticipantGroupBinding:
+    return ParticipantGroupBinding.objects.create(groupspecificparticipantdata=gspd, role=role)
