@@ -251,6 +251,16 @@ class Worker:
         if to_participant_group:
             self.bot.send_message(self.participant_group, log, reply_to_message_id=self.message['message_id'])
 
+    def answer_to_the_message(self, text: str):
+        """
+        Will answer to the message
+        """
+        self.bot.send_message(
+            self.message['chat']['id'],
+            text,
+            reply_to_message_id=self.message['message_id']
+        )
+
     def update_bot(self, *, timeout=60):
         """ Will get bot updates """
         updates = self.get_updates(timeout=timeout)
