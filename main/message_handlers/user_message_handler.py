@@ -27,8 +27,10 @@ def handle_message_from_user(worker):
     if worker.source.command:
         worker.source.command_model = get_from_Model(
             TelegramCommand, command=worker.command)
+        worker.source.command_argv = worker.source.raw_text.split(' ')[1:]
     else:
         worker.source.command_model = None
+        worker.source.command_argv = None
 
     worker.source.text = worker.source.raw_text if not worker.source.command else None
 
