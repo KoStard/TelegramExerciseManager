@@ -12,6 +12,9 @@ def promote_to_admin(worker):
         worker.answer_to_the_message("You have to reply to the user's message to promote him/her to admin.")
         return False
     user_data = worker.source.message['reply_to_message']['from']
+    if user_data['is_bot']:
+        worker.answer_to_the_message("Can't register bot as participant.")
+        return False
     participant = get_from_Model(Participant, id=user_data['id'])
     if not participant:
         participant = register_participant(user_data)
