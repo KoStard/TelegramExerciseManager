@@ -230,6 +230,8 @@ class Worker:
             return ''
         if self.source.get('participant_group'):
             return f'{self.source.participant_group.username or self.source.participant_group.title} '
+        elif self.source.get('administrator_page'):
+            return f'ADMP {self.source.administrator_page.username or self.source.administrator_page.title} '
         elif self.source.message['chat']['type'] in ('group', 'supergroup'):
             return f'UR {self.source.message["chat"].get("username") or self.source.message["chat"].get("title")} '
         elif self.source.message['chat']['type'] in ('private',):
