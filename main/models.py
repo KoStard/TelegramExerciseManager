@@ -457,6 +457,22 @@ class Bot(User):
         logging.info(resp)
         return resp
 
+    def forward_message(self, from_group: Group or str or int, to_group: Group or str or int, message_id: int or str):
+        """
+        Will forward message from one group to another one using message_id
+        """
+        if isinstance(from_group, Group): from_group = from_group.telegram_id
+        if isinstance(to_group, Group): to_group = to_group.telegram_id
+        url = self.base_url + 'forwardMessage'
+        payload = {
+            'from_chat_id': from_group,
+            'chat_id': to_group,
+            'message_id': message_id
+        }
+        resp = get_response(url, payload=payload)
+        logging.info(resp)
+        return resp
+
     def __str__(self):
         return '[BOT] {}'.format(self.first_name or self.username
                                  or self.last_name)

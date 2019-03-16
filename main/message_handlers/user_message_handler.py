@@ -36,6 +36,9 @@ def handle_message_from_user(worker):
     worker.source.participant_group = get_from_Model(
         ParticipantGroup, telegram_id=worker.source.message["chat"]["id"])
 
+    if worker.source.participant_group:
+        worker.source.pg_adm_page = worker.source.participant_group.get_administrator_page()
+
     # Checking if is a superadmin
     worker.source.is_superadmin = not not SuperAdmin.objects.filter(
         user__id=worker.source.message['from']['id'])

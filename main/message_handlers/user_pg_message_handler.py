@@ -13,6 +13,13 @@ def handle_message_from_participant_group(worker):
     user_pg_gor_sender.get_or_register_message_sender_participant(worker)
     user_pg_gor_sender.get_or_register_groupspecificparticipantdata_of_active_participant(worker)
     user_pg_register_new_members.register_participant_group_new_members(worker)
+    if user_pg_message_bindings_handler.has_message_bindings(worker):
+        if worker.pg_adm_page:
+            worker.bot.forward_message(
+                from_group=worker.source.message['chat']['id'],
+                to_group=worker.pg_adm_page,
+                message_id=worker.source.message['message_id'],
+            )
     if user_pg_entities_handler.handle_entities(worker) and user_pg_message_bindings_handler.handle_message_bindings(
             worker):
         worker.unilog(worker.create_log_from_message())

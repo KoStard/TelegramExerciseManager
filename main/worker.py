@@ -138,7 +138,8 @@ class Worker:
     def adm_log(self, message):
         """ Will log to the administrator page if available """
         if not self.is_administrator_page:
-            self.bot.send_message(self.participant_group.administratorpage, message)
+            if self.pg_adm_page:
+                self.bot.send_message(self.pg_adm_page, message)
         elif isinstance(self.participant_group, AdministratorPage) or self.administrator_page:
             self.bot.send_message(self.participant_group or self.administrator_page, message,
                                   reply_to_message_id=self.message['message_id'])

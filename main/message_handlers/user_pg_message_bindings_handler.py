@@ -59,3 +59,7 @@ def handle_message_bindings(worker) -> bool:
                     value='message_binding_low_permissions'))
             return False
     return True
+
+
+def has_message_bindings(worker) -> bool:
+    return any(message_binding in worker.source.message for message_binding in AVAILABLE_MESSAGE_BINDINGS)
