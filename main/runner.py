@@ -46,6 +46,7 @@ from django.utils import timezone
 from main.universals import (update_and_restart)
 from main.worker import Worker
 from main.models import *
+from main.program_settings import ALLOW_PRODUCTION_MODE
 running = True
 file_checks = 0
 
@@ -131,4 +132,5 @@ if __name__ == '__main__':
     else:
         print("*****************--IN THE STANDARD MODE--*****************")
         bots = Bot.objects.filter(for_testing=False)
-    run(bots, testing=testing)
+    if testing or (not testing and ALLOW_PRODUCTION_MODE):
+        run(bots, testing=testing)
