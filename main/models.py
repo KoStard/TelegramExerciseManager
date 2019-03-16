@@ -47,7 +47,8 @@ class Problem(models.Model):
 
     index = models.IntegerField(null=True, blank=True)
     formulation = models.CharField(max_length=1500)
-    variants = ArrayField(models.CharField(max_length=500), blank=True, null=True)
+    variants = ArrayField(
+        models.CharField(max_length=500), blank=True, null=True)
     answer_formulation = models.CharField(max_length=6000)
     right_variant = models.CharField(max_length=1)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
@@ -58,9 +59,10 @@ class Problem(models.Model):
     def __str__(self):
         return """\\<b>#Problem N{}\\</b>{}\n{}{}{}""".format(
             self.index, ("\nFrom chapter: #{}".format(
-                self.chapter.replace(' ', '_').replace(':', '')) if self.chapter else ''),
-            self.formulation,
-            ''.join(f'\n{variant.upper()}. {text}' for variant, text in self.variants_dict.items()),
+                self.chapter.replace(' ', '_').replace(':', ''))
+                         if self.chapter else ''), self.formulation,
+            ''.join(f'\n{variant.upper()}. {text}'
+                    for variant, text in self.variants_dict.items()),
             ('' if self.has_next else '\n#last'))
 
     def get_answer(self):
@@ -77,15 +79,31 @@ class Problem(models.Model):
                 processed=False),
             key=lambda answer: answer.id
         )  # Getting both right and wrong answers -> have to be processed
+        old_roles = {
+            answer.id: answer.group_specific_participant_data.
+            highest_standard_role_binding
+            for answer in answers
+        }
         for answer in answers:
             answer.process()
             answer.group_specific_participant_data.recalculate_roles()
+        new_roles = {
+            answer.id: answer.group_specific_participant_data.
+            highest_standard_role_binding
+            for answer in answers
+        }
         return self.get_leader_board(
             participant_group,
-            answers=[answer for answer in answers if answer.right
-                     ])  # Including in the leaderboard only right answers
+            answers=[answer for answer in answers if answer.right],
+            old_roles=old_roles,
+            new_roles=new_roles
+        )  # Including in the leaderboard only right answers
 
-    def get_leader_board(self, participant_group, answers=None):
+    def get_leader_board(self,
+                         participant_group,
+                         answers=None,
+                         old_roles=None,
+                         new_roles=None):
         """ Will return problem leaderboard """
         answers = answers or sorted(
             Answer.objects.filter(
@@ -99,13 +117,15 @@ class Problem(models.Model):
         if len(answers):
             index = 1
             for answer in answers:
-                current = "{}: {} - {}{}".format(
+                current = "{}: {} - {}{}{}".format(
                     index, answer.group_specific_participant_data.participant,
                     answer.group_specific_participant_data.score,
                     (' [{}%]'.format(
                         answer.group_specific_participant_data.percentage)
                      if answer.group_specific_participant_data.percentage else
-                     ''))
+                     ''), f' -> {new_roles[answer.id].name}'
+                    if new_roles and old_roles and answer.id in new_roles
+                    and new_roles[answer.id] != old_roles[answer.id] else '')
                 if index <= 3:
                     current = '\\<b>{}\\</b>'.format(current)
                 index += 1
@@ -138,7 +158,10 @@ class Problem(models.Model):
 
     @property
     def variants_dict(self):
-        return {chr(ord('a') + index): self.variants[index] for index in range(len(self.variants))}
+        return {
+            chr(ord('a') + index): self.variants[index]
+            for index in range(len(self.variants))
+        }
 
     @staticmethod
     def get_list_display():
@@ -166,7 +189,9 @@ class ParticipantDefinedProblem(Problem):
     def __str__(self):
         return """\\<b>#User_Defined_Problem {} - From #{}\\</b>\n{}{}""".format(
             self.problem_name, self.participant.name.replace(' ', '_'),
-            self.formulation, ''.join(f'\n{variant.upper()}. {text}' for variant, text in self.variants_dict.items()))
+            self.formulation, ''.join(
+                f'\n{variant.upper()}. {text}'
+                for variant, text in self.variants_dict.items()))
 
     @staticmethod
     def get_list_display():
@@ -283,8 +308,14 @@ class ParticipantGroup(Group):
         points_map = {}
         for gspd in self.groupspecificparticipantdata_set.all():
             points_map.setdefault(gspd.score, []).append(gspd.id)
-        points_position = {points: position + 1 for position, points in enumerate(sorted(points_map.keys()))}
-        positions = {gspd.id: points_position[gspd.score] for gspd in self.groupspecificparticipantdata_set.all()}
+        points_position = {
+            points: position + 1
+            for position, points in enumerate(sorted(points_map.keys()))
+        }
+        positions = {
+            gspd.id: points_position[gspd.score]
+            for gspd in self.groupspecificparticipantdata_set.all()
+        }
         return positions
 
     @staticmethod
@@ -362,7 +393,7 @@ class User(models.Model):
 
 
 class Bot(User):
-    """ Bot model 
+    """ Bot model
      - for_testing - if is True, will be used in testing mode
     """
     token = models.CharField(max_length=50)
@@ -422,11 +453,11 @@ class Bot(User):
             url = self.base_url + 'sendMessage'
             payload = {
                 'chat_id':
-                    group,
+                group,
                 'text':
-                    message.replace('<', '&lt;').replace('\\&lt;', '<'),
+                message.replace('<', '&lt;').replace('\\&lt;', '<'),
                 'reply_to_message_id':
-                    reply_to_message_id if not resp else resp[-1].get('message_id')
+                reply_to_message_id if not resp else resp[-1].get('message_id')
             }
             if parse_mode:
                 payload['parse_mode'] = parse_mode
@@ -457,7 +488,7 @@ class Bot(User):
         return resp
 
     def delete_message(self, participant_group: str or Group, message_id: int
-                                                                          or str):
+                       or str):
         """ Will delete message from the group """
         if not (isinstance(participant_group, str)
                 or isinstance(participant_group, int)):
@@ -468,7 +499,8 @@ class Bot(User):
         logging.info(resp)
         return resp
 
-    def forward_message(self, from_group: Group or str or int, to_group: Group or str or int, message_id: int or str):
+    def forward_message(self, from_group: Group or str or int, to_group: Group
+                        or str or int, message_id: int or str):
         """
         Will forward message from one group to another one using message_id
         """
@@ -595,10 +627,10 @@ class GroupSpecificParticipantData(models.Model):
             new_role = [
                 st.role for st in ScoreThreshold.objects.all()
                 if st.range_min <= self.score and st.range_max >= self.score
-                   and st.role.from_stardard_kit
+                and st.role.from_stardard_kit
             ]
             if not new_role or new_role[
-                0].priority_level <= standard_role.priority_level:
+                    0].priority_level <= standard_role.priority_level:
                 return
             new_role = new_role[0]
             if new_role.priority_level == -1:
@@ -611,7 +643,7 @@ class GroupSpecificParticipantData(models.Model):
             new_role = [
                 st.role for st in ScoreThreshold.objects.all()
                 if st.range_min <= self.score and st.range_max >= self.score
-                   and st.role.from_stardard_kit
+                and st.role.from_stardard_kit
             ]
             if not new_role:
                 return
@@ -723,7 +755,7 @@ class Violation(models.Model):
 
 
 class ParticipantGroupBinding(models.Model):
-    """ Participant-Group binding 
+    """ Participant-Group binding
     - Same participant can have multiple bindings in the same group"""
     groupspecificparticipantdata = models.ForeignKey(
         GroupSpecificParticipantData, on_delete=models.CASCADE)
@@ -844,12 +876,13 @@ class TelegramCommand(models.Model):
     description = models.CharField(max_length=500, blank=True, null=True)
 
     def __str__(self):
-        return '{} {}_{}{} - {}'.format(self.command, self.minimal_priority_level,
-                                        ''.join('*' if el else '-' for el in (
-                                            self.in_unregistered, self.in_participant_groups,
-                                            self.in_administrator_pages,
-                                            self.in_admp_needs_bound_participant_group)),
-                                        'A' if self.needs_superadmin else '-', self.description)
+        return '{} {}_{}{} - {}'.format(
+            self.command, self.minimal_priority_level, ''.join(
+                '*' if el else '-'
+                for el in (self.in_unregistered, self.in_participant_groups,
+                           self.in_administrator_pages,
+                           self.in_admp_needs_bound_participant_group)),
+            'A' if self.needs_superadmin else '-', self.description)
 
     class Meta:
         verbose_name = 'Telegram Command'
