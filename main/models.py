@@ -276,6 +276,17 @@ class ParticipantGroup(Group):
         """ Will return administrator page if available """
         return safe_getter(self, 'administratorpage')
 
+    def get_participants_positions(self) -> dict:
+        """
+        Will return dict of {gspd.id: position}
+        """
+        points_map = {}
+        for gspd in self.groupspecificparticipantdata_set.all():
+            points_map.setdefault(gspd.score, []).append(gspd.id)
+        points_position = {points: position + 1 for position, points in enumerate(sorted(points_map.keys()))}
+        positions = {gspd.id: points_position[gspd.score] for gspd in self.groupspecificparticipantdata_set.all()}
+        return positions
+
     @staticmethod
     def get_list_display():
         """ Used in the django_admin_creator """

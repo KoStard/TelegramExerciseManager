@@ -294,21 +294,18 @@ class Worker:
     def createGroupLeaderBoard(self):
         """ Will process and present the data for group leaderboards """
         gss = [{
-            "participant":
-                gs.participant,
-            "score":
-                gs.score,
-            "percentage":
-                gs.percentage,
-            "standard_role":
-                safe_getter(gs.highest_standard_role_binding, "role"),
-            "non_standard_role":
-                safe_getter(gs.highest_non_standard_role_binding, "role"),
+            "participant": gs.participant,
+            "score": gs.score,
+            "percentage": gs.percentage,
+            "standard_role": safe_getter(gs.highest_standard_role_binding, "role"),
+            "non_standard_role": safe_getter(gs.highest_non_standard_role_binding, "role"),
+            "position_change": self.source.position_change.get(gs.id, 0)
         } for gs in sorted(
             (gs for gs in self.source.participant_group.groupspecificparticipantdata_set.all()
              if gs.score),
-            key=lambda gs: [gs.score, gs.percentage],
-        )[::-1]]
+            key=lambda gs: (-gs.score, -gs.percentage, gs.id),
+            # In the beginning higher score, higher percentage and lower id
+        )]
         return gss
 
     def get_promoted_participants_list_for_leaderboard(self):
@@ -321,8 +318,7 @@ class Worker:
         } for gs in sorted(
             (gs for gs in self.source.participant_group.groupspecificparticipantdata_set.all()
              if gs.highest_non_standard_role_binding),
-            key=
-            lambda gs: [gs.highest_non_standard_role_binding.role.priority_level],
+            key=lambda gs: [gs.highest_non_standard_role_binding.role.priority_level],
         )[::-1]]
         return admin_gss
 
@@ -346,39 +342,50 @@ class Worker:
             ]))
 
         last_role = None
-        roles_number = 0
+        roles_index = 0
         current_list = None
         for gs in (raw_leaderboard[:max_limit] if max_limit else raw_leaderboard):
+
+            # Creating position change identifier
+            position_change_identifier = ''
+            if gs['position_change'] > 0:
+                position_change_identifier = '🔼'
+            elif gs['position_change'] < 0:
+                position_change_identifier = '🔽'
+
             if not last_role or gs['standard_role'].value != last_role.value:
                 if last_role:
                     res.append(DynamicTelegraphPageCreator.hr)
-                roles_number += 1
+                roles_index += 1
                 res.append(
                     DynamicTelegraphPageCreator.create_title(
                         4, '{}. {} {}'.format(
-                            roles_number, gs['standard_role'].name,
+                            roles_index, gs['standard_role'].name,
                             '⭐' * gs['standard_role'].priority_level)))
                 ordered_list = DynamicTelegraphPageCreator.create_ordered_list()
                 res.append(ordered_list)
                 current_list = ordered_list['children']
                 last_role = gs['standard_role']
-            if roles_number == 1:
+            if roles_index == 1:
                 current_list.append(
-                    DynamicTelegraphPageCreator.create_list_item(
+                    DynamicTelegraphPageCreator.create_list_item([
                         DynamicTelegraphPageCreator.create_bold([
                             DynamicTelegraphPageCreator.create_code([
                                 DynamicTelegraphPageCreator.create_bold(
-                                    '{}'.format(gs['score'])), 'xp{}'.format(
+                                    position_change_identifier + '{}'.format(
+                                        gs['score'])), 'xp{}'.format(
                                     (' [{}%]'.format(gs['percentage'])
                                      if gs['percentage'] is not None else ''))
                             ]), ' - {}'.format(gs['participant'].full_name)
-                        ])))
+                        ])
+                    ]))
             else:
                 current_list.append(
                     DynamicTelegraphPageCreator.create_list_item([
                         DynamicTelegraphPageCreator.create_code([
-                            DynamicTelegraphPageCreator.create_bold('{}'.format(
-                                gs['score'])), 'xp{}'.format(
+                            DynamicTelegraphPageCreator.create_bold(
+                                position_change_identifier + '{}'.format(
+                                    gs['score'])), 'xp{}'.format(
                                 (' [{}%]'.format(gs['percentage'])
                                  if gs['percentage'] is not None else ''))
                         ]), ' - {}'.format(gs['participant'].full_name)
