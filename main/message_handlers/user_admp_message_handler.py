@@ -27,6 +27,9 @@ def handle_message_from_administrator_page(worker):
                 # worker.unilog("Command rejected")
                 reject_command_in_administrator_pages_because_of_source(worker)
                 return
+            if worker.command_model.in_admp_needs_bound_participant_group and not worker.administrator_page.participant_group:
+                reject_command_in_administrator_pages_because_of_no_pg(worker)
+                return
             # worker.unilog("Command accepted")
             worker.run_command()
         else:
@@ -85,3 +88,8 @@ def reject_command_in_administrator_page(worker):
         ),
         reply_to_message_id=worker['message']["message_id"],
     )
+
+
+def reject_command_in_administrator_pages_because_of_no_pg(worker):
+    worker.unilog("The command '{}' is not supposed to be used in the no-participant-group Administrator Pages.".format(
+        worker.command))
