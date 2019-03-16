@@ -295,7 +295,9 @@ class TelegramCommandAdmin(admin.ModelAdmin):
         "in_unregistered",
         "in_participant_groups",
         "in_administrator_pages",
+        "in_admp_needs_bound_participant_group",
         "needs_superadmin",
+        "description",
     )
 
 

@@ -828,12 +828,17 @@ class TelegramCommand(models.Model):
     in_unregistered = models.BooleanField(default=False)
     in_participant_groups = models.BooleanField(default=False)
     in_administrator_pages = models.BooleanField(default=False)
+    in_admp_needs_bound_participant_group = models.BooleanField(default=True)
     needs_superadmin = models.BooleanField(default=False)
+    description = models.CharField(max_length=500, blank=True, null=True)
 
     def __str__(self):
-        return '{} {}_{}{}'.format(self.command, self.minimal_priority_level, ''.join('*' if el else '-' for el in (
-            self.in_unregistered, self.in_participant_groups, self.in_administrator_pages)),
-                                   'A' if self.needs_superadmin else '-')
+        return '{} {}_{}{} - {}'.format(self.command, self.minimal_priority_level,
+                                        ''.join('*' if el else '-' for el in (
+                                            self.in_unregistered, self.in_participant_groups,
+                                            self.in_administrator_pages,
+                                            self.in_admp_needs_bound_participant_group)),
+                                        'A' if self.needs_superadmin else '-', self.description)
 
     class Meta:
         verbose_name = 'Telegram Command'
