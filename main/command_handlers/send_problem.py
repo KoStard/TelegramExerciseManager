@@ -1,5 +1,6 @@
 import logging
 from main.models import Problem
+from os import path
 
 
 def send_problem(worker) -> None:
@@ -53,7 +54,7 @@ def send_problem(worker) -> None:
             )
             logging.debug("Sending image for problem {}".format(problem.index))
             worker.adm_log("Sent image {} for problem N{}".format(
-                image, problem.index))
+                path.basename(image.name), problem.index))
         except Exception as e:
             print("Can't send image {}".format(image))
             print(e)
