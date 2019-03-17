@@ -247,6 +247,7 @@ class Group(models.Model):
     username = models.CharField(max_length=100, blank=True, null=True)
     title = models.CharField(max_length=150)
     type = models.ForeignKey(GroupType, on_delete=models.CASCADE)
+    url = models.URLField(max_length=300, blank=True, null=True)
 
     def __str__(self):
         return '[{}] {}'.format(self.type.name, self.title or self.username)

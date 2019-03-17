@@ -8,7 +8,7 @@ import logging
 from .source_manager import SourceManager
 from .commands_mapping import COMMANDS_MAPPING
 from .message_handlers import message_handler
-
+from .message_handlers.user_pg_message_bindings_handler import AVAILABLE_MESSAGE_BINDINGS
 """
 Will contain some function relations and arguments to run them after a command is processed
 {bot_object_id: [{func: f, args: [], kwargs: {}}]}
@@ -16,35 +16,6 @@ Will contain some function relations and arguments to run them after a command i
 POST_PROCESSING_STACK = {}
 
 # configure_logging()
-
-
-AVAILABLE_ENTITIES = {
-    "mention": -1,
-    "hashtag": 1,
-    "cashtag": 0,
-    "bot_command": -1,
-    "url": 2,
-    "email": 1,
-    "phone_number": 0,
-    "bold": 0,
-    "italic": 0,
-    "code": 0,
-    "pre": 0,
-    "text_link": 3,
-    "text_mention": -1,
-}
-
-AVAILABLE_MESSAGE_BINDINGS = {
-    "document": 0,
-    "sticker": 0,
-    "photo": 1,
-    "audio": 2,
-    "animation": 2,
-    "voice": 2,
-    "game": 3,
-    "video": 3,
-    "video_note": 3,
-}
 
 
 def register_participant(user_data) -> Participant:
@@ -59,8 +30,8 @@ def register_participant(user_data) -> Participant:
     return participant
 
 
-def register_groupspecificparticipantdata(
-        **kwargs) -> GroupSpecificParticipantData:
+def register_groupspecificparticipantdata(**kwargs
+                                          ) -> GroupSpecificParticipantData:
     """
     Will register GroupSpecificParticipantData
     - participant
@@ -128,7 +99,7 @@ class Worker:
             payload={
                 'offset': self.bot.offset or "",  # Setting offset
                 'timeout':
-                    timeout  # Setting timeout to delay empty updates handling
+                timeout  # Setting timeout to delay empty updates handling
             })
         if update_last_updated:
             self.bot.last_updated = timezone.now()
@@ -140,9 +111,12 @@ class Worker:
         if not self.is_administrator_page:
             if self.pg_adm_page:
                 self.bot.send_message(self.pg_adm_page, message)
-        elif isinstance(self.participant_group, AdministratorPage) or self.administrator_page:
-            self.bot.send_message(self.participant_group or self.administrator_page, message,
-                                  reply_to_message_id=self.message['message_id'])
+        elif isinstance(self.participant_group,
+                        AdministratorPage) or self.administrator_page:
+            self.bot.send_message(
+                self.participant_group or self.administrator_page,
+                message,
+                reply_to_message_id=self.message['message_id'])
         else:
             print("Unknown in adm_log!!!")
 
@@ -153,7 +127,8 @@ class Worker:
         funcs = POST_PROCESSING_STACK[self.bot.id]
         del POST_PROCESSING_STACK[self.bot.id]
         for func_data in funcs:
-            func_data['func'](*(func_data.get('args') or []), **(func_data.get('kwargs') or {}))
+            func_data['func'](*(func_data.get('args') or []),
+                              **(func_data.get('kwargs') or {}))
 
     def run_command(self, command: TelegramCommand = None):
         if not command:
@@ -170,10 +145,8 @@ class Worker:
         """
         message = update.get('message')
         self.source.append(
-            update=update,
-            message=message,
-            bot=self.bot
-        )  # Adding the dictionary for this update
+            update=update, message=message,
+            bot=self.bot)  # Adding the dictionary for this update
         catched_exception = False
         self.source.message = message
         if message:
@@ -193,29 +166,32 @@ class Worker:
         """ Creating log from Telegram message """
         pr_m = ''  # Priority marker
         if self.source.is_superadmin:
-            pr_m = '🌋'
+            pr_m = 'СЂСџРЉвЂ№'
         elif self['groupspecificparticipantdata'].is_admin:
-            pr_m = '🛡️'
+            pr_m = 'СЂСџвЂєРЋРїС‘РЏ'
         else:
-            pr_m = '⭐' * max(self['groupspecificparticipantdata'].highest_standard_role_binding.role.priority_level, 0)
+            pr_m = 'РІВ­С’' * max(
+                self['groupspecificparticipantdata'].
+                highest_standard_role_binding.role.priority_level, 0)
 
         if pr_m:
             pr_m += ' '
 
         name = self['participant'].name
         data = (
-                       (self['raw_text'] or '') +
-                       ('' if not self['entities'] else
-                        '\nFound entities: ' + ', '.join(entity['type']
-                                                         for entity in self['entities']))
-               ) or ', '.join(
+            (self['raw_text'] or '') +
+            ('' if not self['entities'] else
+             '\nFound entities: ' + ', '.join(entity['type']
+                                              for entity in self['entities']))
+        ) or ', '.join(
             message_binding for message_binding in AVAILABLE_MESSAGE_BINDINGS
             if message_binding in self['message']
-        ) or (("New chat member" if len(self['message']['new_chat_members']) == 1
-                                    and self['message']['new_chat_members'][0]['id'] ==
-                                    self['message']['from']['id'] else 'Invited {}'.format(', '.join(
-            user['first_name'] or user['last_name'] or user['username']
-            for user in self['message'].get('new_chat_members'))))
+        ) or (("New chat member" if len(
+            self['message']['new_chat_members']) == 1 and self['message']
+               ['new_chat_members'][0]['id'] == self['message']['from']['id']
+               else 'Invited {}'.format(', '.join(
+                   user['first_name'] or user['last_name'] or user['username']
+                   for user in self['message'].get('new_chat_members'))))
               if 'new_chat_members' in self['message'] else '')
         result = f"{pr_m}{name} -> {data}"
         return result
@@ -236,7 +212,7 @@ class Worker:
             return f'ADMP {self.source.administrator_page.username or self.source.administrator_page.title} '
         elif self.source.message['chat']['type'] in ('group', 'supergroup'):
             return f'UR {self.source.message["chat"].get("username") or self.source.message["chat"].get("title")} '
-        elif self.source.message['chat']['type'] in ('private',):
+        elif self.source.message['chat']['type'] in ('private', ):
             return f'PRIVATE '
         return ''
 
@@ -248,10 +224,14 @@ class Worker:
         """
         identifier = self._get_unilog_message_identifier()
         print(f'{identifier}{log}')  # Logging to stdout
-        logging.info(f'{timezone.now()} | {identifier}{log}')  # Logging to logs file
+        logging.info(
+            f'{timezone.now()} | {identifier}{log}')  # Logging to logs file
         self.adm_log(log)  # Logging to administrator page
         if to_participant_group:
-            self.bot.send_message(self.participant_group, log, reply_to_message_id=self.message['message_id'])
+            self.bot.send_message(
+                self.participant_group,
+                log,
+                reply_to_message_id=self.message['message_id'])
 
     def answer_to_the_message(self, text: str):
         """
@@ -260,8 +240,7 @@ class Worker:
         self.bot.send_message(
             self.message['chat']['id'],
             text,
-            reply_to_message_id=self.message['message_id']
-        )
+            reply_to_message_id=self.message['message_id'])
 
     def update_bot(self, *, timeout=60):
         """ Will get bot updates """
@@ -293,65 +272,76 @@ class Worker:
 
     def createGroupLeaderBoard(self):
         """ Will process and present the data for group leaderboards """
-        gss = [{
-            "participant": gs.participant,
-            "score": gs.score,
-            "percentage": gs.percentage,
-            "standard_role": safe_getter(gs.highest_standard_role_binding, "role"),
-            "non_standard_role": safe_getter(gs.highest_non_standard_role_binding, "role"),
-            "position_change": self.source.position_change.get(gs.id, 0)
-        } for gs in sorted(
-            (gs for gs in self.source.participant_group.groupspecificparticipantdata_set.all()
-             if gs.score),
-            key=lambda gs: (-gs.score, -gs.percentage, gs.id),
-            # In the beginning higher score, higher percentage and lower id
-        )]
+        gss = [
+            {
+                "participant":
+                gs.participant,
+                "score":
+                gs.score,
+                "percentage":
+                gs.percentage,
+                "standard_role":
+                safe_getter(gs.highest_standard_role_binding, "role"),
+                "non_standard_role":
+                safe_getter(gs.highest_non_standard_role_binding, "role"),
+                "position_change":
+                self.source.position_change.get(gs.id, 0)
+            } for gs in sorted(
+                (gs for gs in (self.source.participant_group or self.source.administrator_page.participant_group).
+                 groupspecificparticipantdata_set.all() if gs.score),
+                key=lambda gs: (-gs.score, -gs.percentage, gs.id),
+                # In the beginning higher score, higher percentage and lower id
+            )
+        ]
         return gss
 
     def get_promoted_participants_list_for_leaderboard(self):
         """ Will process data of promoted participants for group leaderboards """
         admin_gss = [{
             "participant":
-                gs.participant,
+            gs.participant,
             "non_standard_role":
-                gs.highest_non_standard_role_binding.role,
+            gs.highest_non_standard_role_binding.role,
         } for gs in sorted(
-            (gs for gs in self.source.participant_group.groupspecificparticipantdata_set.all()
+            (gs for gs in (self.source.participant_group or self.source.administrator_page.participant_group).
+             groupspecificparticipantdata_set.all()
              if gs.highest_non_standard_role_binding),
-            key=lambda gs: [gs.highest_non_standard_role_binding.role.priority_level],
+            key=lambda gs:
+            [gs.highest_non_standard_role_binding.role.priority_level],
         )[::-1]]
         return admin_gss
 
-    def createGroupLeaderBoardForTelegraph(self,
-                                           *,
-                                           max_limit=0):
+    def createGroupLeaderBoardForTelegraph(self, *, max_limit=0):
         """ Will create content for leaderboard telegraph page """
         raw_leaderboard = self.createGroupLeaderBoard()
-        raw_promoted_list = self.get_promoted_participants_list_for_leaderboard()
+        raw_promoted_list = self.get_promoted_participants_list_for_leaderboard(
+        )
         res = []
 
         res.append(
             DynamicTelegraphPageCreator.create_blockquote([
                 "Here you see dynamically updating Leaderboard of ",
                 DynamicTelegraphPageCreator.create_link(
-                    "Pathology Group [MedStard]",
-                    'https://t.me/Pathology_Group'), '.\n', "This is a part of ",
-                DynamicTelegraphPageCreator.create_link("MedStard",
-                                                        "https://t.me/MedStard"),
-                ", where you can find much more stuff related to medicine, so welcome to our community."
+                    (self.source.participant_group or self.source.administrator_page.participant_group).title,
+                    (self.source.participant_group or self.source.administrator_page.participant_group).url), '.\n',
+                "This is a part of ",
+                DynamicTelegraphPageCreator.create_link(
+                    "MedStard", "https://t.me/MedStard"),
+                ", where you can find much more stuff related to medicine and education, so welcome to our community."
             ]))
 
         last_role = None
         roles_index = 0
         current_list = None
-        for gs in (raw_leaderboard[:max_limit] if max_limit else raw_leaderboard):
+        for gs in (raw_leaderboard[:max_limit]
+                   if max_limit else raw_leaderboard):
 
             # Creating position change identifier
             position_change_identifier = ''
             if gs['position_change'] > 0:
-                position_change_identifier = '🔼'
+                position_change_identifier = 'СЂСџвЂќС�'
             elif gs['position_change'] < 0:
-                position_change_identifier = '🔽'
+                position_change_identifier = 'СЂСџвЂќР…'
 
             if not last_role or gs['standard_role'].value != last_role.value:
                 if last_role:
@@ -361,8 +351,9 @@ class Worker:
                     DynamicTelegraphPageCreator.create_title(
                         4, '{}. {} {}'.format(
                             roles_index, gs['standard_role'].name,
-                            '⭐' * gs['standard_role'].priority_level)))
-                ordered_list = DynamicTelegraphPageCreator.create_ordered_list()
+                            'РІВ­С’' * gs['standard_role'].priority_level)))
+                ordered_list = DynamicTelegraphPageCreator.create_ordered_list(
+                )
                 res.append(ordered_list)
                 current_list = ordered_list['children']
                 last_role = gs['standard_role']
@@ -372,10 +363,10 @@ class Worker:
                         DynamicTelegraphPageCreator.create_bold([
                             DynamicTelegraphPageCreator.create_code([
                                 DynamicTelegraphPageCreator.create_bold(
-                                    position_change_identifier + '{}'.format(
-                                        gs['score'])), 'xp{}'.format(
-                                    (' [{}%]'.format(gs['percentage'])
-                                     if gs['percentage'] is not None else ''))
+                                    position_change_identifier +
+                                    '{}'.format(gs['score'])), 'xp{}'.format(
+                                        (' [{}%]'.format(gs['percentage']) if
+                                         gs['percentage'] is not None else ''))
                             ]), ' - {}'.format(gs['participant'].full_name)
                         ])
                     ]))
@@ -384,10 +375,10 @@ class Worker:
                     DynamicTelegraphPageCreator.create_list_item([
                         DynamicTelegraphPageCreator.create_code([
                             DynamicTelegraphPageCreator.create_bold(
-                                position_change_identifier + '{}'.format(
-                                    gs['score'])), 'xp{}'.format(
-                                (' [{}%]'.format(gs['percentage'])
-                                 if gs['percentage'] is not None else ''))
+                                position_change_identifier +
+                                '{}'.format(gs['score'])), 'xp{}'.format(
+                                    (' [{}%]'.format(gs['percentage'])
+                                     if gs['percentage'] is not None else ''))
                         ]), ' - {}'.format(gs['participant'].full_name)
                     ]))
         res.append(DynamicTelegraphPageCreator.hr)
@@ -404,15 +395,18 @@ class Worker:
                         DynamicTelegraphPageCreator.create_link(
                             gs['participant'].full_name,
                             'https://telegram.me/{}'.format(
-                                gs['participant'].username)) if
-                        gs['participant'].username else gs['participant'].full_name
+                                gs['participant'].username))
+                        if gs['participant'].username else
+                        gs['participant'].full_name
                     ])))
         return res
 
-    def create_and_save_telegraph_page(self, t_account: TelegraphAccount,
-                                       title: str,
-                                       content: list,
-                                       participant_group: ParticipantGroup = None):
+    def create_and_save_telegraph_page(
+            self,
+            t_account: TelegraphAccount,
+            title: str,
+            content: list,
+            participant_group: ParticipantGroup = None) -> DynamicTelegraphPageCreator:
         """ This function will be used to create new pages for new groups - not used for now  """
         d = DynamicTelegraphPageCreator(t_account.access_token)
         p = d.create_page(title, content, return_content=True)

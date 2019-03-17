@@ -68,8 +68,7 @@ def answer_problem(worker):
                                      worker.source.new_positions}
     t_pages = worker.source.participant_group.telegraphpage_set.all()
     if t_pages:  # Create the page manually with DynamicTelegraphPageCreator
-        t_page = t_pages[
-            len(t_pages) -
+        t_page = t_pages[len(t_pages) -
             1]  # Using last added page -> negative indexing is not supported
         t_account = t_page.account
         page_controller = DynamicTelegraphPageCreator(t_account.access_token)

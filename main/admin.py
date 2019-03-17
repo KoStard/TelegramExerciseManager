@@ -74,6 +74,7 @@ class GroupAdmin(admin.ModelAdmin):
         "username",
         "title",
         "type",
+        "url",
     )
 
 
@@ -129,6 +130,7 @@ class AdministratorPageAdmin(admin.ModelAdmin):
         "username",
         "title",
         "type",
+        "url",
         "participant_group",
     )
 
