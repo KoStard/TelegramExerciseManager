@@ -9,11 +9,13 @@ from .source_manager import SourceManager
 from .commands_mapping import COMMANDS_MAPPING
 from .message_handlers import message_handler
 from .message_handlers.user_pg_message_bindings_handler import AVAILABLE_MESSAGE_BINDINGS
+
 """
 Will contain some function relations and arguments to run them after a command is processed
 {bot_object_id: [{func: f, args: [], kwargs: {}}]}
 """
 POST_PROCESSING_STACK = {}
+
 
 # configure_logging()
 
@@ -99,7 +101,7 @@ class Worker:
             payload={
                 'offset': self.bot.offset or "",  # Setting offset
                 'timeout':
-                timeout  # Setting timeout to delay empty updates handling
+                    timeout  # Setting timeout to delay empty updates handling
             })
         if update_last_updated:
             self.bot.last_updated = timezone.now()
@@ -172,26 +174,26 @@ class Worker:
         else:
             pr_m = 'РІВ­С’' * max(
                 self['groupspecificparticipantdata'].
-                highest_standard_role_binding.role.priority_level, 0)
+                    highest_standard_role_binding.role.priority_level, 0)
 
         if pr_m:
             pr_m += ' '
 
         name = self['participant'].name
         data = (
-            (self['raw_text'] or '') +
-            ('' if not self['entities'] else
-             '\nFound entities: ' + ', '.join(entity['type']
-                                              for entity in self['entities']))
-        ) or ', '.join(
+                       (self['raw_text'] or '') +
+                       ('' if not self['entities'] else
+                        '\nFound entities: ' + ', '.join(entity['type']
+                                                         for entity in self['entities']))
+               ) or ', '.join(
             message_binding for message_binding in AVAILABLE_MESSAGE_BINDINGS
             if message_binding in self['message']
         ) or (("New chat member" if len(
             self['message']['new_chat_members']) == 1 and self['message']
-               ['new_chat_members'][0]['id'] == self['message']['from']['id']
+                                    ['new_chat_members'][0]['id'] == self['message']['from']['id']
                else 'Invited {}'.format(', '.join(
-                   user['first_name'] or user['last_name'] or user['username']
-                   for user in self['message'].get('new_chat_members'))))
+            user['first_name'] or user['last_name'] or user['username']
+            for user in self['message'].get('new_chat_members'))))
               if 'new_chat_members' in self['message'] else '')
         result = f"{pr_m}{name} -> {data}"
         return result
@@ -212,7 +214,7 @@ class Worker:
             return f'ADMP {self.source.administrator_page.username or self.source.administrator_page.title} '
         elif self.source.message['chat']['type'] in ('group', 'supergroup'):
             return f'UR {self.source.message["chat"].get("username") or self.source.message["chat"].get("title")} '
-        elif self.source.message['chat']['type'] in ('private', ):
+        elif self.source.message['chat']['type'] in ('private',):
             return f'PRIVATE '
         return ''
 
@@ -275,20 +277,20 @@ class Worker:
         gss = [
             {
                 "participant":
-                gs.participant,
+                    gs.participant,
                 "score":
-                gs.score,
+                    gs.score,
                 "percentage":
-                gs.percentage,
+                    gs.percentage,
                 "standard_role":
-                safe_getter(gs.highest_standard_role_binding, "role"),
+                    safe_getter(gs.highest_standard_role_binding, "role"),
                 "non_standard_role":
-                safe_getter(gs.highest_non_standard_role_binding, "role"),
+                    safe_getter(gs.highest_non_standard_role_binding, "role"),
                 "position_change":
-                self.source.position_change.get(gs.id, 0)
+                    self.source.position_change.get(gs.id, 0)
             } for gs in sorted(
                 (gs for gs in (self.source.participant_group or self.source.administrator_page.participant_group).
-                 groupspecificparticipantdata_set.all() if gs.score),
+                    groupspecificparticipantdata_set.all() if gs.score),
                 key=lambda gs: (-gs.score, -gs.percentage, gs.id),
                 # In the beginning higher score, higher percentage and lower id
             )
@@ -299,12 +301,12 @@ class Worker:
         """ Will process data of promoted participants for group leaderboards """
         admin_gss = [{
             "participant":
-            gs.participant,
+                gs.participant,
             "non_standard_role":
-            gs.highest_non_standard_role_binding.role,
+                gs.highest_non_standard_role_binding.role,
         } for gs in sorted(
             (gs for gs in (self.source.participant_group or self.source.administrator_page.participant_group).
-             groupspecificparticipantdata_set.all()
+                groupspecificparticipantdata_set.all()
              if gs.highest_non_standard_role_binding),
             key=lambda gs:
             [gs.highest_non_standard_role_binding.role.priority_level],
@@ -323,7 +325,9 @@ class Worker:
                 "Here you see dynamically updating Leaderboard of ",
                 DynamicTelegraphPageCreator.create_link(
                     (self.source.participant_group or self.source.administrator_page.participant_group).title,
-                    (self.source.participant_group or self.source.administrator_page.participant_group).url), '.\n',
+                    f'https://t.me/{(self.source.participant_group or self.source.administrator_page.participant_group).username}' if (
+                                self.source.participant_group or self.source.administrator_page.participant_group).username else ''),
+                '.\n',
                 "This is a part of ",
                 DynamicTelegraphPageCreator.create_link(
                     "MedStard", "https://t.me/MedStard"),
@@ -334,7 +338,7 @@ class Worker:
         roles_index = 0
         current_list = None
         for gs in (raw_leaderboard[:max_limit]
-                   if max_limit else raw_leaderboard):
+        if max_limit else raw_leaderboard):
 
             # Creating position change identifier
             position_change_identifier = ''
@@ -365,8 +369,8 @@ class Worker:
                                 DynamicTelegraphPageCreator.create_bold(
                                     position_change_identifier +
                                     '{}'.format(gs['score'])), 'xp{}'.format(
-                                        (' [{}%]'.format(gs['percentage']) if
-                                         gs['percentage'] is not None else ''))
+                                    (' [{}%]'.format(gs['percentage']) if
+                                     gs['percentage'] is not None else ''))
                             ]), ' - {}'.format(gs['participant'].full_name)
                         ])
                     ]))
@@ -377,8 +381,8 @@ class Worker:
                             DynamicTelegraphPageCreator.create_bold(
                                 position_change_identifier +
                                 '{}'.format(gs['score'])), 'xp{}'.format(
-                                    (' [{}%]'.format(gs['percentage'])
-                                     if gs['percentage'] is not None else ''))
+                                (' [{}%]'.format(gs['percentage'])
+                                 if gs['percentage'] is not None else ''))
                         ]), ' - {}'.format(gs['participant'].full_name)
                     ]))
         res.append(DynamicTelegraphPageCreator.hr)

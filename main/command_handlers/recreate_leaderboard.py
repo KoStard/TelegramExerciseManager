@@ -7,7 +7,6 @@ def recreate_leaderboard(worker):
     Will recreate leaderboard for current admp's pg
     Will lead to some data loss - such as position changes
     """
-    t_account: TelegraphAccount = TelegraphAccount.objects.first()
     if not worker.source.administrator_page.participant_group.telegraphpage_set.count():
         worker.answer_to_the_message(
             "The group doesn't have any leaderboard telegraph page.")
