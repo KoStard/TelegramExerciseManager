@@ -11,7 +11,7 @@ def recreate_leaderboard(worker):
         worker.answer_to_the_message(
             "The group doesn't have any leaderboard telegraph page.")
         return False
-    worker.source.position_change = worker.source.position_change or {}
+    worker.source.position_change = worker.source.get('position_change') or {}
     t_page = worker.source.administrator_page.participant_group.telegraphpage_set.last()
     t_account = t_page.account
     page_controller = DynamicTelegraphPageCreator(t_account.access_token)

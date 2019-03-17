@@ -14,7 +14,7 @@ def create_leaderboard(worker):
             f"The link - {worker.source.administrator_page.participant_group.telegraphpage_set.last().url}"
         )
         return False
-    worker.source.position_change = worker.source.position_change or {}
+    worker.source.position_change = worker.source.get('position_change') or {}
     d = worker.create_and_save_telegraph_page(
         t_account=t_account,
         title=' '.join(worker.source.command_argv)
