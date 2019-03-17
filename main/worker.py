@@ -291,7 +291,7 @@ class Worker:
             } for gs in sorted(
                 (gs for gs in (self.source.participant_group or self.source.administrator_page.participant_group).
                     groupspecificparticipantdata_set.all() if gs.score),
-                key=lambda gs: (-gs.score, -gs.percentage, gs.id),
+                key=lambda gs: (-(gs.score or 0), -(gs.percentage or 0), gs.id),
                 # In the beginning higher score, higher percentage and lower id
             )
         ]
