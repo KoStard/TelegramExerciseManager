@@ -168,11 +168,11 @@ class Worker:
         """ Creating log from Telegram message """
         pr_m = ''  # Priority marker
         if self.source.is_superadmin:
-            pr_m = 'СЂСџРЉвЂ№'
+            pr_m = '🌋'
         elif self['groupspecificparticipantdata'].is_admin:
-            pr_m = 'СЂСџвЂєРЋРїС‘РЏ'
+            pr_m = '🛡️'
         else:
-            pr_m = 'РІВ­С’' * max(
+            pr_m = '⭐' * max(
                 self['groupspecificparticipantdata'].
                     highest_standard_role_binding.role.priority_level, 0)
 
@@ -343,9 +343,9 @@ class Worker:
             # Creating position change identifier
             position_change_identifier = ''
             if gs['position_change'] > 0:
-                position_change_identifier = 'СЂСџвЂќС�'
+                position_change_identifier = '🔼'
             elif gs['position_change'] < 0:
-                position_change_identifier = 'СЂСџвЂќР…'
+                position_change_identifier = '🔽'
 
             if not last_role or gs['standard_role'].value != last_role.value:
                 if last_role:
@@ -355,7 +355,7 @@ class Worker:
                     DynamicTelegraphPageCreator.create_title(
                         4, '{}. {} {}'.format(
                             roles_index, gs['standard_role'].name,
-                            'РІВ­С’' * gs['standard_role'].priority_level)))
+                            '⭐' * gs['standard_role'].priority_level)))
                 ordered_list = DynamicTelegraphPageCreator.create_ordered_list(
                 )
                 res.append(ordered_list)
