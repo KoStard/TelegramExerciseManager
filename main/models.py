@@ -81,7 +81,7 @@ class Problem(models.Model):
         )  # Getting both right and wrong answers -> have to be processed
         old_roles = {
             answer.id: answer.group_specific_participant_data.
-            highest_standard_role_binding
+            highest_standard_role_binding.role
             for answer in answers
         }
         for answer in answers:
@@ -89,7 +89,7 @@ class Problem(models.Model):
             answer.group_specific_participant_data.recalculate_roles()
         new_roles = {
             answer.id: answer.group_specific_participant_data.
-            highest_standard_role_binding
+            highest_standard_role_binding.role
             for answer in answers
         }
         return self.get_leader_board(
@@ -125,7 +125,7 @@ class Problem(models.Model):
                      if answer.group_specific_participant_data.percentage else
                      ''), f' -> {new_roles[answer.id].name}'
                     if new_roles and old_roles and answer.id in new_roles
-                    and new_roles[answer.id] != old_roles[answer.id] else '')
+                    and new_roles[answer.id].name != old_roles[answer.id].name else '')
                 if index <= 3:
                     current = '\\<b>{}\\</b>'.format(current)
                 index += 1
