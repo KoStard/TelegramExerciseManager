@@ -11,6 +11,7 @@ def register_participant(user_data) -> Participant:
     Will register participant based on user_data
     """
     participant = Participant(
+        id=user_data['id'],
         username=safe_getter(user_data, 'username', mode='DICT'),
         first_name=safe_getter(user_data, 'first_name', mode='DICT'),
         last_name=safe_getter(user_data, 'last_name', mode='DICT'))
@@ -18,8 +19,8 @@ def register_participant(user_data) -> Participant:
     return participant
 
 
-def register_groupspecificparticipantdata(
-        **kwargs) -> GroupSpecificParticipantData:
+def register_groupspecificparticipantdata(**kwargs
+                                          ) -> GroupSpecificParticipantData:
     """
     Will register GroupSpecificParticipantData
     - participant
@@ -35,4 +36,5 @@ def register_groupspecificparticipantdata(
 
 def create_participantgroupbinding(gspd: GroupSpecificParticipantData,
                                    role: Role) -> ParticipantGroupBinding:
-    return ParticipantGroupBinding.objects.create(groupspecificparticipantdata=gspd, role=role)
+    return ParticipantGroupBinding.objects.create(
+        groupspecificparticipantdata=gspd, role=role)
