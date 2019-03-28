@@ -568,7 +568,9 @@ class Role(models.Model):
         return self.priority_level >= other.priority_level
 
     def __eq__(self, other: 'Role'):
-        return self.priority_level == other.priority_level
+        return other and hasattr(
+            other,
+            'priority_level') and self.priority_level == other.priority_level
 
     def __str__(self):
         return '[{}] {}'.format(self.priority_level, self.name)
