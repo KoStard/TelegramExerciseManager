@@ -22,7 +22,7 @@ def create_leaderboard(worker):
             worker.source.administrator_page.participant_group.title.split(' ')
             [:-1])  # Removing [MedStard] from the end
         + ' Leaderboard',
-        content=worker.createGroupLeaderBoardForTelegraph(),
+        content=[''],  # worker.createGroupLeaderBoardForTelegraph(),
         participant_group=worker.source.administrator_page.participant_group)
     worker.answer_to_the_message(
         f"Created https://telegra.ph/{d.page_path} for {worker.source.administrator_page.participant_group.title}"
