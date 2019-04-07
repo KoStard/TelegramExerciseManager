@@ -365,10 +365,22 @@ class User(models.Model):
     first_name = models.CharField(max_length=50, blank=True, null=True)
     last_name = models.CharField(max_length=50, blank=True, null=True)
 
+    @staticmethod
+    def check_name_validity_for_output(name):
+        """
+        Will check if the name is valid to be presented alone
+        Shorter than 3 letters - False
+        Shorter than 6 letters and ending with '.' - False
+        """
+        if len(name) < 3 or (len(name) < 6 and name[-1] == '.'):
+            return False
+        return True
+
     @property
     def name(self):
         """ Universal method to get available name of the user """
-        return self.first_name or self.username or self.last_name
+        stack = tuple(el for el in (self.first_name, self.username, self.last_name) if el) or ('UNKNOWN', )
+        return stack[0] if self.check_name_validity_for_output(stack[0]) else ' '.join(stack[:2])
 
     @property
     def full_name(self):
