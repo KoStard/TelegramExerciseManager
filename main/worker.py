@@ -2,13 +2,12 @@ from main.models import *
 from main.universals import get_response, configure_logging, safe_getter, get_from_Model, update_and_restart
 from main.dynamic_telegraph_page_creator import DynamicTelegraphPageCreator
 from django.utils import timezone
-from time import sleep
-from datetime import datetime
 import logging
 from .source_manager import SourceManager
 from .commands_mapping import COMMANDS_MAPPING
 from .message_handlers import message_handler
 from .message_handlers.user_pg_message_bindings_handler import AVAILABLE_MESSAGE_BINDINGS
+from collections import Counter
 
 """
 Will contain some function relations and arguments to run them after a command is processed
@@ -183,8 +182,9 @@ class Worker:
         data = (
                        (self['raw_text'] or '') +
                        ('' if not self['entities'] else
-                        '\nFound entities: ' + ', '.join(entity['type']
-                                                         for entity in self['entities']))
+                        '\nFound entities: ' + ', '.join('{} - {}'.format(ent, count) for ent, count in
+                                                         Counter(
+                                                             [entity['type'] for entity in self['entities']]).items()))
                ) or ', '.join(
             message_binding for message_binding in AVAILABLE_MESSAGE_BINDINGS
             if message_binding in self['message']
@@ -326,7 +326,7 @@ class Worker:
                 DynamicTelegraphPageCreator.create_link(
                     (self.source.participant_group or self.source.administrator_page.participant_group).title,
                     f'https://t.me/{(self.source.participant_group or self.source.administrator_page.participant_group).username}' if (
-                                self.source.participant_group or self.source.administrator_page.participant_group).username else ''),
+                            self.source.participant_group or self.source.administrator_page.participant_group).username else ''),
                 '.\n',
                 "This is a part of ",
                 DynamicTelegraphPageCreator.create_link(
