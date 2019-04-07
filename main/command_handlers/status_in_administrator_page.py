@@ -1,3 +1,6 @@
+from collections import Counter
+
+
 def status_in_administrator_page(worker):
     """ Will log the status to the administrator page """
     try:
@@ -11,11 +14,8 @@ def status_in_administrator_page(worker):
             """There is no active problem.""",
             reply_to_message_id=worker.source.message['message_id'])
         return
-    answers_count = [el for el in ((
-        variant.upper(),
-        len([answer for answer in answers
-             if answer.answer.upper() == variant.upper()]))
-        for variant in worker.source.administrator_page.participant_group.activeProblem.variants_dict.keys()) if el[1]]
+    answers_count = sorted([item for item in Counter(a.answer.upper() for a in answers).items() if item[1]],
+                           key=lambda el: el[0])
     worker.source.bot.send_message(
         worker.source.administrator_page,
         """Current status for problem {} is{}\nFor more contact with @KoStard""".format(

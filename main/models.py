@@ -163,6 +163,13 @@ class Problem(models.Model):
             for index in range(len(self.variants))
         }
 
+    @property
+    def real_variants_dict_keys(self):
+        if self.variants:
+            return tuple(chr(ord('a') + index) for index in range(len(self.variants)))
+        else:
+            return 'a', 'b', 'c', 'd', 'e'
+
     @staticmethod
     def get_list_display():
         """ Used in the django_admin_creator """

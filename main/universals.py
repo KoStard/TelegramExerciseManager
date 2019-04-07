@@ -6,6 +6,7 @@ from django.core.management import call_command
 import os
 import sys
 import platform
+from main.program_settings import python
 
 
 def get_response(url, *, payload=None, files=None, use_post=False):
@@ -98,4 +99,4 @@ def update_and_restart():
     # Restarting the script if on macOS or Linux -> has to be executable -> chmod a+x runner.py
     # Won't match new python files
     print("Migrating...")
-    os.execv(sys.executable, ['python3.7'] + sys.argv)
+    os.execv(sys.executable, [python, *sys.argv])
