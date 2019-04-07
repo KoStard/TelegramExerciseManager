@@ -318,7 +318,7 @@ class ParticipantGroup(Group):
             points_map.setdefault(gspd.score, []).append(gspd.id)
         points_position = {
             points: position + 1
-            for position, points in enumerate(sorted(points_map.keys()))
+            for position, points in enumerate(reversed(sorted(points_map.keys())))
         }
         positions = {
             gspd.id: points_position[gspd.score]
