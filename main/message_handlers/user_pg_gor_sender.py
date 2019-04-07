@@ -16,6 +16,8 @@ def get_or_register_message_sender_participant(worker) -> Participant:
             Participant, id=worker['message']['from']['id'])
         if not participant:
             participant = user_registry.register_participant(worker['message']['from'])
+        else:
+            participant.update_from_telegram_dict(worker['message']['from'])
         worker.source.participant = participant
         worker.source.is_from_superadmin = not not safe_getter(worker.participant, 'superadmin')
         return participant
