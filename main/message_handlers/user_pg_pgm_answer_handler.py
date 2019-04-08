@@ -47,8 +47,8 @@ def handle_answer_change(worker):
             worker['variant']))
         worker['bot'].send_message(
             worker['participant_group'],
-            'Dear {}, you can\'t change your answer.'.format(
-                worker['participant'].name),
+            'Dear {}, you can\'t change your answer (your accepted answer is {}).'.format(
+                worker['participant'].name, worker['old_answer'].answer),
             reply_to_message_id=worker['message']['message_id'])
 
 
