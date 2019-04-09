@@ -19,7 +19,8 @@ def check_message_language(worker):
     """
     current_language = 'English'
     current_language_regex = re.compile('^[a-zA-Z0-9?<>&#^_\'",.;:| +`/\\\s{}\[\]=~!@#$%^&*()£€•₽-]+$')
-    if not current_language_regex.match(worker.source.raw_text) and not worker.is_from_superadmin:
+    if worker.source.raw_text and not current_language_regex.match(
+            worker.source.raw_text) and not worker.is_from_superadmin:
         worker.answer_to_the_message(
             "Your message will be removed, because only {} characters are allowed.".format(current_language))
         worker.bot.delete_message(worker.source.participant_group, worker.source.message['message_id'])
