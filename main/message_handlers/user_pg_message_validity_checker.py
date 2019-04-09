@@ -24,3 +24,5 @@ def check_message_language(worker):
         worker.answer_to_the_message(
             "Your message will be removed, because only {} characters are allowed.".format(current_language))
         worker.bot.delete_message(worker.source.participant_group, worker.source.message['message_id'])
+        return False
+    return True
