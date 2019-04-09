@@ -60,7 +60,7 @@ def reject_command_in_pg(worker):
         reply_to_message_id=worker['message']["message_id"],
     )
     worker['groupspecificparticipantdata'].create_violation(
-        get_from_Model(ViolationType, value='command_low_permissions'))
+        get_from_Model(ViolationType, value='command_low_permissions'), worker=worker)
 
 
 def reject_command_in_pg_because_of_source(worker):

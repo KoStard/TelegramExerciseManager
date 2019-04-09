@@ -729,13 +729,15 @@ class GroupSpecificParticipantData(models.Model):
         return ns_role_binding and ns_role_binding.role >= Role.objects.get(
             value='admin')  # Will raise error if the database is not filled
 
-    def create_violation(self, type, date=None):
+    def create_violation(self, type: 'ViolationType', date=None, worker=None):
         """ Will create a violation to this GroupSpecificParticipantData """
         violation = Violation(
             groupspecificparticipantdata=self,
             date=date or timezone.now(),
             type=type)
         violation.save()
+        if worker:
+            worker.unilog(f"Found violation \"{type.name}\" from {self.participant.name}.")
         return violation
 
     def __str__(self):

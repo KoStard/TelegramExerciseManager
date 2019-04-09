@@ -76,6 +76,6 @@ def handle_entities(worker) -> bool:
                     value='message_entity_low_permissions'),
                 datetime.fromtimestamp(
                     worker['message']["date"],
-                    tz=timezone.get_current_timezone()))
+                    tz=timezone.get_current_timezone()), worker=worker)
             return False
     return True

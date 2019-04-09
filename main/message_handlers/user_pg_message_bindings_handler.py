@@ -56,7 +56,7 @@ def handle_message_bindings(worker) -> bool:
             worker['groupspecificparticipantdata'].create_violation(
                 get_from_Model(
                     ViolationType,
-                    value='message_binding_low_permissions'))
+                    value='message_binding_low_permissions'), worker=worker)
             return False
     return True
 
