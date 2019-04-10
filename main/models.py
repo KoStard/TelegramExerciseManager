@@ -507,6 +507,27 @@ class Bot(User):
         logging.info(resp)
         return resp
 
+    def send_document(self,
+                   participant_group: 'text/id or group',
+                   document: io.BufferedReader,
+                   *,
+                   caption='',
+                   reply_to_message_id=None):
+        """ Will send a document to the group """
+        if not (isinstance(participant_group, str)
+                or isinstance(participant_group, int)):
+            participant_group = participant_group.telegram_id
+        url = self.base_url + 'sendDocument'
+        payload = {
+            'chat_id': participant_group,
+            'caption': caption,
+            'reply_to_message_id': reply_to_message_id,
+        }
+        files = {'document': document}
+        resp = get_response(url, payload=payload, files=files)
+        logging.info(resp)
+        return resp
+
     def delete_message(self, participant_group: str or Group, message_id: int
                        or str):
         """ Will delete message from the group """
