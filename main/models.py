@@ -528,6 +528,24 @@ class Bot(User):
         logging.info(resp)
         return resp
 
+    def get_file_info(self, file_id):
+        """
+        Will get file path from given file_id
+        """
+        url = self.base_url + 'getFile'
+        payload = {
+            'file_id': file_id
+        }
+        resp = get_response(url, payload=payload)
+        logging.info(resp)
+        return resp
+
+    def get_file(self, file_path):
+        """
+        Will download and return file content
+        """
+        return get_response('https://api.telegram.org/file/bot{}/{}'.format(self.token, file_path), raw=True)
+
     def delete_message(self, participant_group: str or Group, message_id: int
                        or str):
         """ Will delete message from the group """

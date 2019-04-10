@@ -9,7 +9,7 @@ import platform
 from main.program_settings import python
 
 
-def get_response(url, *, payload=None, files=None, use_post=False):
+def get_response(url, *, payload=None, files=None, use_post=False, raw=False):
     """ Will get response with get/post based on files existance """
     headers = {"Content-Type": "application/json"}
     if files or use_post:
@@ -17,6 +17,8 @@ def get_response(url, *, payload=None, files=None, use_post=False):
     else:
         resp = requests.get(url, params=payload)
     if resp.status_code == 200:
+        if raw:
+            return resp.content
         res = json.loads(resp.content.decode("utf-8"), encoding="utf-8")
         return res.get("result") if res.get("result") != None else res
     else:

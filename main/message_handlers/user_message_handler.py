@@ -17,7 +17,7 @@ def handle_message_from_user(worker):
     - is_administrator_page
     - administrator_page
     """
-    worker.source.raw_text = worker.source.message.get("text")
+    worker.source.raw_text = worker.source.message.get("text") or worker.source.message.get('caption')
 
     # This won't work with multiargumental commands
     worker.source.command = worker.source.raw_text[1:].split(" ")[0].split('@')[0] if worker.source.raw_text and \
@@ -58,7 +58,7 @@ def handle_message_from_user(worker):
         user_admp_message_handler.handle_message_from_administrator_page(
             worker)
     elif worker.source.is_superadmin or worker.source.message['chat'][
-            'type'] in ('private', 'group', 'supergroup'):
+        'type'] in ('private', 'group', 'supergroup'):
         # If the user if superadmin but is sending a message not in a registered group
         user_unrgp_message_handler.handle_message_from_unregistered_target(
             worker)
