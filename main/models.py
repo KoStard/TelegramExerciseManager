@@ -81,7 +81,7 @@ class Problem(models.Model):
         )  # Getting both right and wrong answers -> have to be processed
         old_roles = {
             answer.id: answer.group_specific_participant_data.
-            highest_standard_role_binding.role
+                highest_standard_role_binding.role
             for answer in answers
         }
         for answer in answers:
@@ -89,12 +89,13 @@ class Problem(models.Model):
             answer.group_specific_participant_data.recalculate_roles()
         new_roles = {
             answer.id: answer.group_specific_participant_data.
-            highest_standard_role_binding.role
+                highest_standard_role_binding.role
             for answer in answers
         }
         return self.get_leader_board(
             participant_group,
             answers=[answer for answer in answers if answer.right],
+            all_answers_count=len(answers),
             old_roles=old_roles,
             new_roles=new_roles
         )  # Including in the leaderboard only right answers
@@ -102,6 +103,7 @@ class Problem(models.Model):
     def get_leader_board(self,
                          participant_group,
                          answers=None,
+                         all_answers_count=None,
                          old_roles=None,
                          new_roles=None):
         """ Will return problem leaderboard """
@@ -113,6 +115,12 @@ class Problem(models.Model):
                 right=True,
                 processed=False),
             key=lambda answer: answer.id)
+        if all_answers_count is None:
+            all_answers_count = Answer.objects.filter(
+                problem=self,
+                group_specific_participant_data__participant_group=
+                participant_group,
+                processed=False).count()
         res = "Right answers:"
         if len(answers):
             index = 1
@@ -125,13 +133,16 @@ class Problem(models.Model):
                      if answer.group_specific_participant_data.percentage else
                      ''), f' -> {new_roles[answer.id].name}'
                     if new_roles and old_roles and answer.id in new_roles
-                    and new_roles[answer.id].name != old_roles[answer.id].name else '')
+                       and new_roles[answer.id].name != old_roles[answer.id].name else '')
                 if index <= 3:
                     current = '\\<b>{}\\</b>'.format(current)
                 index += 1
                 res += '\n' + current
         else:
-            res += '\nNo one solved the problem. #Hardcore'
+            res += '\nNo one solved the problem.'
+        if all_answers_count:  # To prevent bug with division to 0
+            res += '\n[Right {}/{}]'.format(len(answers), all_answers_count) + (
+                ' #Hardcore' if len(answers) / all_answers_count < 0.4 else '')
         res += '\n#Problem_Leaderboard'
         return res
 
@@ -386,7 +397,7 @@ class User(models.Model):
     @property
     def name(self):
         """ Universal method to get available name of the user """
-        stack = tuple(el for el in (self.first_name, self.username, self.last_name) if el) or ('UNKNOWN', )
+        stack = tuple(el for el in (self.first_name, self.username, self.last_name) if el) or ('UNKNOWN',)
         return stack[0] if self.check_name_validity_for_output(stack[0]) else ' '.join(stack[:2])
 
     @property
@@ -473,11 +484,11 @@ class Bot(User):
             url = self.base_url + 'sendMessage'
             payload = {
                 'chat_id':
-                group,
+                    group,
                 'text':
-                message.replace('<', '&lt;').replace('\\&lt;', '<'),
+                    message.replace('<', '&lt;').replace('\\&lt;', '<'),
                 'reply_to_message_id':
-                reply_to_message_id if not resp else resp[-1].get('message_id')
+                    reply_to_message_id if not resp else resp[-1].get('message_id')
             }
             if parse_mode:
                 payload['parse_mode'] = parse_mode
@@ -508,11 +519,11 @@ class Bot(User):
         return resp
 
     def send_document(self,
-                   participant_group: 'text/id or group',
-                   document: io.BufferedReader,
-                   *,
-                   caption='',
-                   reply_to_message_id=None):
+                      participant_group: 'text/id or group',
+                      document: io.BufferedReader,
+                      *,
+                      caption='',
+                      reply_to_message_id=None):
         """ Will send a document to the group """
         if not (isinstance(participant_group, str)
                 or isinstance(participant_group, int)):
@@ -547,7 +558,7 @@ class Bot(User):
         return get_response('https://api.telegram.org/file/bot{}/{}'.format(self.token, file_path), raw=True)
 
     def delete_message(self, participant_group: str or Group, message_id: int
-                       or str):
+                                                                          or str):
         """ Will delete message from the group """
         if not (isinstance(participant_group, str)
                 or isinstance(participant_group, int)):
@@ -559,7 +570,7 @@ class Bot(User):
         return resp
 
     def forward_message(self, from_group: Group or str or int, to_group: Group
-                        or str or int, message_id: int or str):
+                                                                         or str or int, message_id: int or str):
         """
         Will forward message from one group to another one using message_id
         """
@@ -688,10 +699,10 @@ class GroupSpecificParticipantData(models.Model):
             new_role = [
                 st.role for st in ScoreThreshold.objects.all()
                 if st.range_min <= self.score and st.range_max >= self.score
-                and st.role.from_stardard_kit
+                   and st.role.from_stardard_kit
             ]
             if not new_role or new_role[
-                    0].priority_level <= standard_role.priority_level:
+                0].priority_level <= standard_role.priority_level:
                 return
             new_role = new_role[0]
             if new_role.priority_level == -1:
@@ -704,7 +715,7 @@ class GroupSpecificParticipantData(models.Model):
             new_role = [
                 st.role for st in ScoreThreshold.objects.all()
                 if st.range_min <= self.score and st.range_max >= self.score
-                and st.role.from_stardard_kit
+                   and st.role.from_stardard_kit
             ]
             if not new_role:
                 return

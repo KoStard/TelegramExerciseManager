@@ -14,7 +14,7 @@ AVAILABLE_MESSAGE_BINDINGS = {
     "audio": 2,
     "animation": 2,
     "voice": 2,
-    "game": 3,
+    "game": 4,
     "video": 3,
     "video_note": 3,
 }
