@@ -418,6 +418,13 @@ class User(models.Model):
         self.last_name = user.get('last_name')
         self.save()
 
+    @property
+    def mention_text(self):
+        if self.username:
+            return f'@{self.username}'
+        else:
+            return f'\\<a href="tg://user?id={self.id}">{self.name}\\</a>'
+
     def __str__(self):
         return '{}'.format(self.name)
 

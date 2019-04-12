@@ -22,7 +22,7 @@ def get_response(url, *, payload=None, files=None, use_post=False, raw=False):
         res = json.loads(resp.content.decode("utf-8"), encoding="utf-8")
         return res.get("result") if res.get("result") != None else res
     else:
-        # print(resp.__dict__)
+        print(resp.__dict__)
         pass
     return resp
 

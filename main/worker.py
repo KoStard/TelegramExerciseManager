@@ -195,7 +195,7 @@ class Worker:
             user['first_name'] or user['last_name'] or user['username']
             for user in self['message'].get('new_chat_members'))))
               if 'new_chat_members' in self['message'] else '')
-        result = f"{pr_m}{name} -> {data}"
+        result = f"{pr_m} {self.participant.mention_text} -> {data}"
         return result
 
     def _get_unilog_message_identifier(self) -> str:
