@@ -65,6 +65,9 @@ class Problem(models.Model):
                     for variant, text in self.variants_dict.items()),
             ('' if self.has_next else '\n#last'))
 
+    def __repr__(self):
+        return '<Problem N{} from chapter "{}">'.format(self.index, self.chapter)
+
     def get_answer(self):
         """ Is generating problem answer formulation to publish """
         return """\\<b>The right choice is {}\\</b>\n{}\n#Answer of the problem N{}.\n""".format(
