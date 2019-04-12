@@ -32,7 +32,8 @@ def send_problem(worker) -> None:
             return
     else:
         if not worker.source.participant_group.activeSubjectGroupBinding.last_problem:
-            worker.answer_to_the_message("There is no active problem, so use the command like this - /send 1")
+            worker.answer_to_the_message(
+                "There was no active problem in this group, so use the command like this - /send 1")
             return
         problem: Problem = worker.source.participant_group.activeSubjectGroupBinding.last_problem.next
         if not problem:
