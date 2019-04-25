@@ -303,6 +303,16 @@ class TelegramCommandAdmin(admin.ModelAdmin):
     )
 
 
+@admin.register(ParticipantGroupMembersCountRegistry)
+class ParticipantGroupMembersCountRegistryAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "participant_group",
+        "current_count",
+        "date",
+    )
+
+
 @admin.register(TelegraphAccount)
 class TelegraphAccountAdmin(admin.ModelAdmin):
     list_display = (

@@ -244,6 +244,13 @@ class Worker:
             text,
             reply_to_message_id=self.message['message_id'])
 
+    @property
+    def active_pg(self):
+        if self.source.has('participant_group'):
+            return self.source.participant_group
+        elif self.source.has('administrator_page'):
+            return self.source.administrator_page.participant_group
+
     def update_bot(self, *, timeout=60):
         """ Will get bot updates """
         updates = self.get_updates(timeout=timeout)

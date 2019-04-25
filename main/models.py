@@ -477,6 +477,8 @@ class Bot(User):
         if not (isinstance(group, str) or isinstance(group, int)):
             group = group.telegram_id
 
+        text = str(text)
+
         if parse_mode == 'Markdown':
             text = text.replace('_', '\_')
         blocks = []
@@ -594,6 +596,17 @@ class Bot(User):
         }
         resp = get_response(url, payload=payload)
         logging.info(resp)
+        return resp
+
+    def get_chat_participants_count(self, chat: str or int or Group):
+        """Will return participants count of given chat - calling getChatMembersCount"""
+        if isinstance(chat, Group): chat = chat.telegram_id
+        url = self.base_url + 'getChatMembersCount'
+        payload = {
+            'chat_id': chat,
+        }
+        resp = get_response(url, payload=payload)
+        logging.info(f"Got participants count [{resp}] for chat {chat}")
         return resp
 
     def __str__(self):
@@ -971,6 +984,24 @@ class TelegramCommand(models.Model):
     class Meta:
         verbose_name = 'Telegram Command'
         db_table = 'db_telegram_command'
+
+
+class ParticipantGroupMembersCountRegistry(models.Model):
+    """
+    Will register participant group members count here
+    """
+
+    participant_group = models.ForeignKey(ParticipantGroup, on_delete=models.CASCADE)
+    current_count = models.IntegerField()
+    date = models.DateTimeField()
+
+    class Meta:
+        verbose_name = 'Participant-Group Members Count Registry'
+        db_table = 'participant_group_members_count_registry'
+
+# ==================================================================================
+# Telegraph Models
+# ==================================================================================
 
 
 class TelegraphAccount(models.Model):
