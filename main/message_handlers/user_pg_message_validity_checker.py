@@ -20,11 +20,17 @@ def check_message_language(worker):
     Default - only English
     """
     current_language = 'English'
-    current_language_regex = re.compile('^[a-zA-Z0-9?<>&#^_\'",.;:| +`/\\\s{}\[\]=~!@#$%^&*()£€•₽-]+$')
-    if worker.source.raw_text and not current_language_regex.match(
-            worker.source.raw_text) and not worker.is_from_superadmin:
+    current_language_regex_negative = re.compile(r'[^a-zA-Z0-9?<>&#^_\'",.;:|+`/\\\s{}\[\]=~!@#$%^&*()£€•₽'
+                            # Allowing all emojis
+                            r'\u263a-\U0001f645'
+                            # Allowing Greek characters
+                            r'\u03B1-\u03C9\u0391-\u03A9\u03F4×µ'
+                            r'-]+')
+    non_english_parts = current_language_regex_negative.findall(worker.source.raw_text) if worker.source.raw_text else None
+    if non_english_parts:# and not worker.is_from_superadmin:
         worker.answer_to_the_message(
-            "Your message will be removed, because only {} characters are allowed.".format(current_language))
+            "Your message will be removed, because it contains these restricted parts: [ {} ].\n"
+            "Currently allowed language is {}.".format(', '.join(non_english_parts), current_language))
         worker.bot.delete_message(worker.source.participant_group, worker.source.message['message_id'])
         worker.source.groupspecificparticipantdata.create_violation(
             get_from_Model(ViolationType, value='language_restriction'), worker=worker)
