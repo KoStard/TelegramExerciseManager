@@ -327,12 +327,12 @@ class ParticipantGroup(Group):
         """
         Will return dict of {gspd.id: position}
         """
-        points_map = {}
+        points_map = {}  # {unique score: [participants]}
         for gspd in self.groupspecificparticipantdata_set.all():
             points_map.setdefault(gspd.score, []).append(gspd.id)
         points_position = {
             points: position + 1
-            for position, points in enumerate(reversed(sorted(points_map.keys())))
+            for position, points in enumerate(sorted(points_map.keys()))
         }
         positions = {
             gspd.id: points_position[gspd.score]
@@ -1007,6 +1007,7 @@ class ParticipantGroupMembersCountRegistry(models.Model):
     class Meta:
         verbose_name = 'Participant-Group Members Count Registry'
         db_table = 'participant_group_members_count_registry'
+
 
 # ==================================================================================
 # Telegraph Models
