@@ -45,7 +45,7 @@ def check_message_length(worker):
     """
     Will check message length
     """
-    if len(worker.source.raw_text) > TEXT_MAX_LENGTH and \
+    if worker.source.raw_text and len(worker.source.raw_text) > TEXT_MAX_LENGTH and \
             worker.source.groupspecificparticipantdata.highest_role.priority_level <= 0 and \
             not worker.source.is_from_superadmin:  # Recruit
         worker.answer_to_the_message(
