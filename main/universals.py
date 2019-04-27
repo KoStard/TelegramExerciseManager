@@ -9,13 +9,27 @@ import platform
 from main.program_settings import python
 
 
-def get_response(url, *, payload=None, files=None, use_post=False, raw=False):
+def get_response(url, *, payload=None, files=None, use_post=False, raw=False, max_retries=3, timeout=None):
     """ Will get response with get/post based on files existance """
     headers = {"Content-Type": "application/json"}
-    if files or use_post:
-        resp = requests.post(url, params=payload, files=files)
-    else:
-        resp = requests.get(url, params=payload)
+    if timeout is None:
+        if payload is None or 'timeout' not in payload:
+            timeout = 10
+        else:
+            timeout = payload['timeout']*1.5 or 10
+    cycle = 0
+    resp = None
+    while cycle < max_retries:
+        cycle += 1
+        try:
+            if files or use_post:
+                resp = requests.post(url, params=payload, files=files, timeout=timeout)
+            else:
+                resp = requests.get(url, params=payload, timeout=timeout)
+            break
+        except requests.exceptions.ReadTimeout:
+            if cycle >= max_retries:
+                raise
     if resp.status_code == 200:
         if raw:
             return resp.content
