@@ -21,8 +21,10 @@ def handle_message_from_participant_group(worker):
                 to_group=worker.pg_adm_page,
                 message_id=worker.source.message['message_id'],
             )
-    if user_pg_entities_handler.handle_entities(worker) and user_pg_message_bindings_handler.handle_message_bindings(
-            worker) and user_pg_message_validity_checker.check_message_validity(worker):
+    status_checkers = (
+        user_pg_entities_handler.handle_entities, user_pg_message_bindings_handler.handle_message_bindings,
+        user_pg_message_validity_checker.check_message_validity)
+    if all(checker(worker) for checker in status_checkers):  # Won't call all checkers if one of them returns False
         worker.unilog(worker.create_log_from_message())
         user_pg_pgm_text_handler.handle_pgm_text(worker)
         user_pg_pgm_command_handler.handle_pgm_commands(worker)
