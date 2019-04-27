@@ -1,5 +1,6 @@
 import logging
 from main.models import Problem
+from main.data_managers.user_registry import register_current_participant_group_members_count
 from os import path
 
 
@@ -70,3 +71,4 @@ def send_problem(worker) -> None:
     worker.source.participant_group.save()
     worker.source.participant_group.activeSubjectGroupBinding.last_problem = problem
     worker.source.participant_group.activeSubjectGroupBinding.save()
+    register_current_participant_group_members_count(worker)  # Registering participants count with send command

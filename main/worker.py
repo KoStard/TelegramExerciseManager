@@ -246,9 +246,9 @@ class Worker:
 
     @property
     def active_pg(self):
-        if self.source.has('participant_group'):
+        if self.source.has('participant_group') and self.source.participant_group:
             return self.source.participant_group
-        elif self.source.has('administrator_page'):
+        elif self.source.has('administrator_page') and self.source.administrator_page:
             return self.source.administrator_page.participant_group
 
     def update_bot(self, *, timeout=60):

@@ -600,6 +600,8 @@ class Bot(User):
 
     def get_chat_participants_count(self, chat: str or int or Group):
         """Will return participants count of given chat - calling getChatMembersCount"""
+        if not chat:
+            return None
         if isinstance(chat, Group): chat = chat.telegram_id
         url = self.base_url + 'getChatMembersCount'
         payload = {
@@ -994,6 +996,9 @@ class ParticipantGroupMembersCountRegistry(models.Model):
     participant_group = models.ForeignKey(ParticipantGroup, on_delete=models.CASCADE)
     current_count = models.IntegerField()
     date = models.DateTimeField()
+
+    def __repr__(self):
+        return f'{self.participant_group.title} with {self.current_count} participants at {self.date}.'
 
     class Meta:
         verbose_name = 'Participant-Group Members Count Registry'
