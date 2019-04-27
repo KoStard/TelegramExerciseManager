@@ -8,6 +8,7 @@ from .commands_mapping import COMMANDS_MAPPING
 from .message_handlers import message_handler
 from .message_handlers.user_pg_message_bindings_handler import AVAILABLE_MESSAGE_BINDINGS
 from collections import Counter
+import re
 
 """
 Will contain some function relations and arguments to run them after a command is processed
@@ -195,7 +196,7 @@ class Worker:
             user['first_name'] or user['last_name'] or user['username']
             for user in self['message'].get('new_chat_members'))))
               if 'new_chat_members' in self['message'] else '')
-        result = f"{pr_m} {self.participant.mention_text} -> {data}"
+        result = f"{pr_m} {self.participant.mention_name} -> {data}"
         return result
 
     def _get_unilog_message_identifier(self) -> str:
@@ -225,7 +226,8 @@ class Worker:
         - adm_page
         """
         identifier = self._get_unilog_message_identifier()
-        print(f'{identifier}{log}')  # Logging to stdout
+        processed_log_for_printing = re.sub(r'\\<[^>]+>', '', log)
+        print(f'{identifier}{processed_log_for_printing}')  # Logging to stdout
         logging.info(
             f'{timezone.now()} | {identifier}{log}')  # Logging to logs file
         self.adm_log(log)  # Logging to administrator page

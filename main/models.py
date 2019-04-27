@@ -425,6 +425,10 @@ class User(models.Model):
         else:
             return f'\\<a href="tg://user?id={self.id}">{self.name}\\</a>'
 
+    @property
+    def mention_name(self):
+        return f'\\<a href="tg://user?id={self.id}">{self.name}\\</a>'
+
     def __str__(self):
         return '{}'.format(self.name)
 
