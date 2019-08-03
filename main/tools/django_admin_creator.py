@@ -1,5 +1,4 @@
 import sys
-import requests
 from django.core.files import File
 from datetime import datetime
 import django

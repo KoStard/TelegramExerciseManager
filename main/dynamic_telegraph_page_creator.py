@@ -1,4 +1,3 @@
-import requests
 from main.universals import get_response, get_response_with_urllib
 from collections.abc import Sequence
 import json

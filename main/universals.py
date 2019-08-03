@@ -7,6 +7,7 @@ import os
 import sys
 import platform
 from main.program_settings import python
+import time
 
 
 def get_response(url, *, payload=None, files=None, use_post=False, raw=False, max_retries=3, timeout=None):
@@ -18,8 +19,7 @@ def get_response(url, *, payload=None, files=None, use_post=False, raw=False, ma
         else:
             timeout = payload['timeout']*1.5 or 10
     cycle = 0
-    resp = None
-    while cycle < max_retries:
+    while True:
         cycle += 1
         try:
             if files or use_post:
@@ -29,7 +29,7 @@ def get_response(url, *, payload=None, files=None, use_post=False, raw=False, ma
             break
         except requests.exceptions.ReadTimeout:
             if cycle >= max_retries:
-                raise
+                time.sleep(2)  # Will always try to connect
     if resp.status_code == 200:
         if raw:
             return resp.content
