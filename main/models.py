@@ -705,10 +705,7 @@ class GroupSpecificParticipantData(models.Model):
     def percentage(self):
         """ Will return user percentage if the score is higher or equal to 450 """
         if self.score >= 450:
-            return round((1 - sum(
-                answer.problem.value
-                for answer in self.answer_set.filter(right=False)) / self.score
-                          ) * 1000) / 10
+            return round(self.answer_set.filter(right=True).count() / self.answer_set.count() * 100, 1)
 
     def recalculate_roles(self):
         """ Will recalculate user's roles in the group """
