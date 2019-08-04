@@ -31,11 +31,20 @@ def get_response(url, *, payload=None, files=None, use_post=False, raw=False, ma
             if cycle >= max_retries:
                 time.sleep(2)  # Will always try to connect
                 logging.info("Trying to reconnect...")
+    data = resp.json()
     if resp.status_code == 200:
         if raw:
             return resp.content
-        res = json.loads(resp.content.decode("utf-8"), encoding="utf-8")
-        return res.get("result") if res.get("result") != None else res
+        return data.get("result") if data.get("result") is not None else data
+    elif data.get('error_code') == 400 and data.get('description') == 'Bad Request: reply message not found':
+        del payload['reply_to_message_id']  # Sending the message without replying
+        return get_response(url,
+                            payload=payload,
+                            files=files,
+                            use_post=use_post,
+                            raw=raw,
+                            max_retries=max_retries,
+                            timeout=timeout)
     else:
         print(resp.__dict__)
         pass
