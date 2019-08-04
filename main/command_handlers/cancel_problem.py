@@ -1,4 +1,4 @@
-from main.models import Answer
+from main.models import Answer, MessageInstance
 
 
 def cancel_problem(worker):
@@ -9,6 +9,11 @@ def cancel_problem(worker):
             problem=worker.source.participant_group.activeProblem)]
         for answer in answers:
             answer.delete()
+        
+        for message_instance in MessageInstance.objects.filter(current_problem=worker.source.participant_group.activeProblem):
+            message_instance.remove_message(worker)
+            message_instance.delete()
+        
         worker.source.participant_group.activeSubjectGroupBinding.last_problem = worker.source.participant_group.activeProblem.previous
         worker.source.participant_group.activeSubjectGroupBinding.save()
         temp_problem = worker.source.participant_group.activeProblem

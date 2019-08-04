@@ -313,6 +313,29 @@ class ParticipantGroupMembersCountRegistryAdmin(admin.ModelAdmin):
     )
 
 
+@admin.register(ActionType)
+class ActionTypeAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "name",
+        "value",
+    )
+
+
+@admin.register(MessageInstance)
+class MessageInstanceAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "action_type",
+        "date",
+        "message_id",
+        "participant",
+        "participant_group",
+        "current_problem",
+        "text",
+    )
+
+
 @admin.register(TelegraphAccount)
 class TelegraphAccountAdmin(admin.ModelAdmin):
     list_display = (

@@ -1,6 +1,8 @@
 import logging
-from main.models import Problem
+from main.models import Problem, MessageInstance, ActionType
 from main.dynamic_telegraph_page_creator import DynamicTelegraphPageCreator
+from datetime import datetime
+from django.utils import timezone
 
 
 def answer_problem(worker):
@@ -12,6 +14,20 @@ def answer_problem(worker):
             reply_to_message_id=worker.source.message["message_id"],
         )
         return
+    
+    # Registering message instance
+    if worker.source.command == 'answer':
+        MessageInstance.objects.create(
+            action_type=ActionType.objects.get(value='problem_command'),
+            date=datetime.fromtimestamp(
+                worker['message']["date"],
+                tz=timezone.get_current_timezone()),
+            message_id=worker.source.message['message_id'],
+            participant=worker.participant,
+            participant_group=worker.participant_group,
+            text=worker.source.raw_text,
+            current_problem=worker.participant_group.activeProblem
+        )
     problem = worker.source.participant_group.activeProblem
     if len(worker.source.raw_text.split()) > 1:
         index = int(worker.source.raw_text.split()[1])
@@ -30,11 +46,23 @@ def answer_problem(worker):
                 worker.source.bot.send_message(worker.source.participant_group,
                                                "Invalid problem number {}.")
             else:
-                worker.source.bot.send_message(worker.source.participant_group, problem.get_answer())
+                resps = worker.source.bot.send_message(worker.source.participant_group, problem.get_answer())
+                for resp in resps:
+                    MessageInstance.objects.create(
+                        action_type=ActionType.objects.get(value='problem_associated'),
+                        date=datetime.fromtimestamp(
+                            resp["date"],
+                            tz=timezone.get_current_timezone()),
+                        message_id=resp['message_id'],
+                        participant=None,
+                        participant_group=worker.participant_group,
+                        text=None,
+                        current_problem=problem
+                    )
                 for problemimage in sorted(problem.problemimage_set.filter(for_answer=True), key=lambda img: img.id):
                     image = problemimage.image
                     try:
-                        worker.source.bot.send_image(
+                        resps = worker.source.bot.send_image(
                             worker.source.participant_group,
                             open(image.path, "rb"),
                             caption="Image of problem N{}'s answer.".format(problem.index),
@@ -45,12 +73,38 @@ def answer_problem(worker):
                             image, problem.index))
                         print(e)
                         logging.info(e)
+                    else:
+                        for resp in resps:
+                            MessageInstance.objects.create(
+                                action_type=ActionType.objects.get(value='problem_associated'),
+                                date=datetime.fromtimestamp(
+                                    resp["date"],
+                                    tz=timezone.get_current_timezone()),
+                                message_id=resp['message_id'],
+                                participant=None,
+                                participant_group=worker.participant_group,
+                                text=None,
+                                current_problem=problem
+                            )
             return
-    worker.source.bot.send_message(worker.source.participant_group, problem.get_answer())
+    resps = worker.source.bot.send_message(worker.source.participant_group, problem.get_answer())
+    for resp in resps:
+        MessageInstance.objects.create(
+            action_type=ActionType.objects.get(value='problem_associated'),
+            date=datetime.fromtimestamp(
+                resp["date"],
+                tz=timezone.get_current_timezone()),
+            message_id=resp['message_id'],
+            participant=None,
+            participant_group=worker.participant_group,
+            text=None,
+            current_problem=problem
+        )
+    
     for problemimage in sorted(problem.problemimage_set.filter(for_answer=True), key=lambda img: img.id):
         image = problemimage.image
         try:
-            worker.source.bot.send_image(
+            resps = worker.source.bot.send_image(
                 worker.source.participant_group,
                 open(image.path, "rb"),
                 caption="Image of problem N{}'s answer.".format(problem.index),
@@ -61,8 +115,34 @@ def answer_problem(worker):
                 image, problem.index))
             print(e)
             logging.info(e)
+        else:
+            for resp in resps:
+                MessageInstance.objects.create(
+                    action_type=ActionType.objects.get(value='problem_associated'),
+                    date=datetime.fromtimestamp(
+                        resp["date"],
+                        tz=timezone.get_current_timezone()),
+                    message_id=resp['message_id'],
+                    participant=None,
+                    participant_group=worker.participant_group,
+                    text=None,
+                    current_problem=problem
+                )
     worker.source.old_positions = worker.participant_group.get_participants_positions()
-    worker.source.bot.send_message(worker.source.participant_group, problem.close(worker.source.participant_group))
+    resps = worker.source.bot.send_message(worker.source.participant_group, problem.close(worker.source.participant_group))
+    for resp in resps:
+        MessageInstance.objects.create(
+            action_type=ActionType.objects.get(value='problem_associated'),
+            date=datetime.fromtimestamp(
+                resp["date"],
+                tz=timezone.get_current_timezone()),
+            message_id=resp['message_id'],
+            participant=None,
+            participant_group=worker.participant_group,
+            text=None,
+            current_problem=problem
+        )
+    
     worker.source.new_positions = worker.participant_group.get_participants_positions()
     worker.source.position_change = {key: worker.source.old_positions[key] - worker.source.new_positions[key] for key in
                                      worker.source.new_positions}

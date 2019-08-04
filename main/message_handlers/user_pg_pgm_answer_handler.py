@@ -3,7 +3,8 @@ Will handle answer of participant group member in participant group
 """
 
 from main.universals import get_from_Model
-from main.models import Answer
+from main.models import Answer, MessageInstance, ActionType
+from datetime import datetime
 from django.utils import timezone
 
 
@@ -52,11 +53,24 @@ def handle_answer_change(worker):
             reply_to_message_id=worker['message']['message_id'])
 
 
-def handle_answers_from_testing_bots(self):
+def handle_answers_from_testing_bots(worker):
     """
     Will handle answers from testing bots
     """
-    self.unilog("Answer from testing bot's controlling groups")
+    worker.unilog("Answer from testing bot's controlling groups")
+
+    # Registering message instance
+    MessageInstance.objects.create(
+        action_type=ActionType.objects.get(value='participant_answer'),
+        date=datetime.fromtimestamp(
+            worker['message']["date"],
+            tz=timezone.get_current_timezone()),
+        message_id=worker.source.message['message_id'],
+        participant=worker.participant,
+        participant_group=worker.participant_group,
+        text=worker.source.raw_text,
+        current_problem=worker.participant_group.activeProblem
+    )
 
 
 def accept_answer(worker) -> Answer:
@@ -81,13 +95,29 @@ def accept_answer(worker) -> Answer:
                     processed=False,
                     group_specific_participant_data__participant_group=worker[
                         'participant_group']))))
+
+    # Registering message instance
+    MessageInstance.objects.create(
+        action_type=ActionType.objects.get(value='participant_answer'),
+        date=datetime.fromtimestamp(
+            worker['message']["date"],
+            tz=timezone.get_current_timezone()),
+        message_id=worker.source.message['message_id'],
+        participant=worker.participant,
+        participant_group=worker.participant_group,
+        text=worker.source.raw_text,
+        current_problem=worker.participant_group.activeProblem
+    )
+    
     answer = Answer(
         problem=worker['participant_group'].activeProblem,
         answer=worker['variant'],
         right=worker['variant'] == worker['participant_group'].activeProblem.right_variant.upper(),
         processed=False,
         group_specific_participant_data=worker['groupspecificparticipantdata'],
-        date=timezone.now(),
+        date=datetime.fromtimestamp(
+                worker['message']["date"],
+                tz=timezone.get_current_timezone()),
     )
     answer.save()
     return answer

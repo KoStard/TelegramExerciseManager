@@ -27,9 +27,10 @@ def get_response(url, *, payload=None, files=None, use_post=False, raw=False, ma
             else:
                 resp = requests.get(url, params=payload, timeout=timeout)
             break
-        except requests.exceptions.ReadTimeout:
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
             if cycle >= max_retries:
                 time.sleep(2)  # Will always try to connect
+                logging.info("Trying to reconnect...")
     if resp.status_code == 200:
         if raw:
             return resp.content

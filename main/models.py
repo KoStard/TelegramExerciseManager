@@ -1003,7 +1003,48 @@ class ParticipantGroupMembersCountRegistry(models.Model):
 
     class Meta:
         verbose_name = 'Participant-Group Members Count Registry'
-        db_table = 'participant_group_members_count_registry'
+        db_table = 'db_participant_group_members_count_registry'
+
+
+class ActionType(models.Model):
+    """
+    Representing action types that happen in the groups
+    """
+    name = models.CharField(max_length=40)
+    value = models.CharField(max_length=40)
+
+    def __repr__(self):
+        return f'{self.name}'
+
+    class Meta:
+        verbose_name = 'Action Type'
+        db_table = 'db_action_type'
+
+
+class MessageInstance(models.Model):
+    """
+    Saving messages data and action types
+    """
+
+    action_type = models.ForeignKey(ActionType, on_delete=models.CASCADE)
+    date = models.DateTimeField(blank=True, null=True)
+    message_id = models.IntegerField()
+    participant = models.ForeignKey(Participant, on_delete=models.CASCADE, blank=True, null=True)
+    participant_group = models.ForeignKey(ParticipantGroup, on_delete=models.CASCADE)
+    current_problem = models.ForeignKey(Problem, on_delete=models.CASCADE, blank=True,
+        null=True)
+    text = models.CharField(max_length=100, blank=True, null=True)
+
+    def remove_message(self, worker):
+        worker.bot.delete_message(self.participant_group, self.message_id)
+
+    def __repr__(self):
+        return f'{self.date} - {self.participant_group.title}: {self.participant.name if self.participant else "BOT"} '\
+                f'-|\t{self.action_type}: {self.text}'
+
+    class Meta:
+        verbose_name = 'Message Instance'
+        db_table = 'db_message_instance'
 
 
 # ==================================================================================
