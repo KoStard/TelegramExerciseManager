@@ -6,6 +6,7 @@ import io
 import re
 import logging
 from main.universals import get_from_Model
+from collections import defaultdict
 
 configure_logging()
 
@@ -327,18 +328,21 @@ class ParticipantGroup(Group):
         """
         Will return dict of {gspd.id: position}
         """
-        points_map = {}  # {unique score: [participants]}
-        for gspd in self.groupspecificparticipantdata_set.all():
-            points_map.setdefault(gspd.score, []).append(gspd.id)
-        points_position = {
-            points: position + 1
-            for position, points in enumerate(sorted(points_map.keys()))
-        }
-        positions = {
-            gspd.id: points_position[gspd.score]
-            for gspd in self.groupspecificparticipantdata_set.all()
-        }
-        return positions
+        position = 0
+        prev = None
+        res = {}
+
+        for score, i in (reversed(
+                sorted(
+                    ((gspd.score, gspd.id)
+                     for gspd in self.groupspecificparticipantdata_set.all()),
+                    key=lambda e: e[0]))):
+            if score != prev:
+                prev = score
+                position += 1
+            res[i] = position
+
+        return res
 
     @staticmethod
     def get_list_display():

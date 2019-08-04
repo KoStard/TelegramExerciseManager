@@ -128,7 +128,7 @@ def answer_problem(worker):
                     text=None,
                     current_problem=problem
                 )
-    worker.source.old_positions = worker.participant_group.get_participants_positions()
+    old_positions = worker.participant_group.get_participants_positions()
     resps = worker.source.bot.send_message(worker.source.participant_group, problem.close(worker.source.participant_group))
     for resp in resps:
         MessageInstance.objects.create(
@@ -143,9 +143,9 @@ def answer_problem(worker):
             current_problem=problem
         )
     
-    worker.source.new_positions = worker.participant_group.get_participants_positions()
-    worker.source.position_change = {key: worker.source.old_positions[key] - worker.source.new_positions[key] for key in
-                                     worker.source.new_positions}
+    new_positions = worker.participant_group.get_participants_positions()
+    worker.source.position_change = {key: old_positions[key] - new_positions[key] for key in
+                                     new_positions}
     t_pages = worker.source.participant_group.telegraphpage_set.all()
     if t_pages:  # Create the page manually with DynamicTelegraphPageCreator
         t_page = t_pages[len(t_pages) -

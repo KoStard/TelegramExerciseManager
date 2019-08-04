@@ -353,8 +353,10 @@ class Worker:
             position_change_identifier = ''
             if gs['position_change'] > 0:
                 position_change_identifier = '🔼'
-            elif gs['position_change'] < 0:
-                position_change_identifier = '🔽'
+            #- Not showing down arrows for now - because participant's score can't get lower
+            #- maybe in the future that will be possible with violations
+            # elif gs['position_change'] < 0:
+            #     position_change_identifier = '🔽'
 
             if not last_role or gs['standard_role'].value != last_role.value:
                 if last_role:
