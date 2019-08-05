@@ -9,6 +9,7 @@ from .message_handlers import message_handler
 from .message_handlers.user_pg_message_bindings_handler import AVAILABLE_MESSAGE_BINDINGS
 from collections import Counter
 import re
+from .events import inactive_group
 
 """
 Will contain some function relations and arguments to run them after a command is processed
@@ -432,3 +433,10 @@ class Worker:
             account=t_account,
             participant_group=participant_group).save()
         return d
+
+    def do_checks(self):
+        """
+        Will do all post-checks
+        - notification in inactive groups
+        """
+        inactive_group.check(self)

@@ -103,6 +103,7 @@ def run(bots, *, testing=False):
             # try:
             if running:
                 worker.update_bot()
+                worker.do_checks()
             # except Exception as e:
             #     logging.warning("ERROR: {}".format(e))
             #     time.sleep(1)
