@@ -41,8 +41,8 @@ def check_entities(worker):
         if AVAILABLE_ENTITIES[entity] > priority_level:
             resp["status"] = False
             resp[
-                "cause"] = "{} entity is not allowed for users with priority level lower than {}".format(
-                entity, AVAILABLE_ENTITIES[entity])
+                "cause"] = "you have to get to the level {} to use \"{}\" entities".format(
+                AVAILABLE_ENTITIES[entity], entity)
             break
     return resp
 

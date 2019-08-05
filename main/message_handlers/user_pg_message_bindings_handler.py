@@ -31,9 +31,8 @@ def check_message_bindings(worker):
             if "cause" not in resp:
                 resp["cause"] = []
             resp["cause"].append(
-                "\"{}\" message binding is not allowed for users with priority level lower than {}"
-                    .format(message_binding,
-                            AVAILABLE_MESSAGE_BINDINGS[message_binding]))
+                "you have to get to the level {} to use \"{}\" message bindings"
+                    .format(AVAILABLE_MESSAGE_BINDINGS[message_binding], message_binding))
     return resp
 
 
