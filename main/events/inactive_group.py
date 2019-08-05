@@ -5,7 +5,7 @@ from datetime import datetime
 
 def check(worker):
     curr = timezone.now()
-    threshold = 3 #* 3600  # 3 hours
+    threshold = 3 * 3600  # 3 hours
     for pg in (e.participant_group for e in worker.bot.botbinding_set.all()):
         last_message_instance = pg.messageinstance_set.last()
         if pg.activeProblem and (curr - last_message_instance.date).seconds > threshold:
