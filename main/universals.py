@@ -36,15 +36,18 @@ def get_response(url, *, payload=None, files=None, use_post=False, raw=False, ma
         if raw:
             return resp.content
         return data.get("result") if data.get("result") is not None else data
-    elif data.get('error_code') == 400 and data.get('description') == 'Bad Request: reply message not found':
-        del payload['reply_to_message_id']  # Sending the message without replying
-        return get_response(url,
-                            payload=payload,
-                            files=files,
-                            use_post=use_post,
-                            raw=raw,
-                            max_retries=max_retries,
-                            timeout=timeout)
+    elif data.get('error_code') == 400:
+        if data.get('description') == 'Bad Request: reply message not found':
+            del payload['reply_to_message_id']  # Sending the message without replying
+            return get_response(url,
+                                payload=payload,
+                                files=files,
+                                use_post=use_post,
+                                raw=raw,
+                                max_retries=max_retries,
+                                timeout=timeout)
+        elif data.get('description') == 'Bad Request: message to delete not found':
+            return   # The message is already removed
     else:
         print(resp.__dict__)
         pass
