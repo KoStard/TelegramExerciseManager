@@ -10,9 +10,8 @@ def check(worker):
         last_message_instance = pg.messageinstance_set.last()
         if pg.activeProblem and (curr - last_message_instance.date).seconds > threshold:
             # Maybe it would be better to remove the notification when participant is answering or when sending/answer a problem
-            for old_notification in pg.messageinstance_set.filter(action_type__value='bot_inactivity_notification'):
+            for old_notification in pg.messageinstance_set.filter(action_type__value='bot_inactivity_notification', removed=False):
                 old_notification.remove_message(worker)
-                old_notification.delete()
             text = "Hey, don't miss your chance to answer the problem "\
                 "and take a higher position in the leaderboard!"
             notification_message = worker.bot.send_message(

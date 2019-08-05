@@ -333,6 +333,7 @@ class MessageInstanceAdmin(admin.ModelAdmin):
         "participant_group",
         "current_problem",
         "text",
+        "removed",
     )
 
 

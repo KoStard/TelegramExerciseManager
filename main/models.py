@@ -1038,12 +1038,15 @@ class MessageInstance(models.Model):
     current_problem = models.ForeignKey(Problem, on_delete=models.CASCADE, blank=True,
         null=True)
     text = models.CharField(max_length=100, blank=True, null=True)
+    removed = models.BooleanField(default=False)
 
     def remove_message(self, worker):
         worker.bot.delete_message(self.participant_group, self.message_id)
+        self.removed = True
+        self.save()
 
     def __repr__(self):
-        return f'{self.date} - {self.participant_group.title}: {self.participant.name if self.participant else "BOT"} '\
+        return f'{"+" if self.removed else "-"}{self.date} - {self.participant_group.title}: {self.participant.name if self.participant else "BOT"} '\
                 f'-|\t{self.action_type}: {self.text}'
 
     class Meta:
